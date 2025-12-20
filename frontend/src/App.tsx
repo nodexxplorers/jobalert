@@ -1,4 +1,4 @@
-// FILE: src/App.tsx
+// src/App.tsx
 
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/landing';
