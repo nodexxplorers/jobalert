@@ -3,9 +3,17 @@
 import { Zap, Clock, Timer } from 'lucide-react';
 import { useState } from 'react';
 
-export default function AlertSettings() {
-  const [alertSpeed, setAlertSpeed] = useState<'instant' | '30min' | 'hourly'>('instant');
-  const [keywords, setKeywords] = useState(['YouTube Shorts', 'TikTok', 'Reels', 'Video Editing', 'CapCut']);
+
+interface AlertSettingsProps {
+  alertSpeed: 'instant' | '30min' | 'hourly';
+  keywords: string[];
+  onSave: (data: any) => Promise<void>;
+  saving: boolean;
+}
+
+export default function AlertSettings({ alertSpeed: initialSpeed, keywords: initialKeywords, onSave, saving }: AlertSettingsProps) {
+  const [alertSpeed, setAlertSpeed] = useState<'instant' | '30min' | 'hourly'>(initialSpeed);
+  const [keywords, setKeywords] = useState<string[]>(initialKeywords || []);
   const [newKeyword, setNewKeyword] = useState('');
 
   const addKeyword = () => {
@@ -19,19 +27,25 @@ export default function AlertSettings() {
     setKeywords(keywords.filter(k => k !== keyword));
   };
 
+  const handleSave = () => {
+    onSave({
+      alert_speed: alertSpeed,
+      keywords: keywords
+    });
+  }
+
   return (
     <div className="mb-8">
       <h3 className="text-xl font-bold text-gray-900 mb-6">Alert Speed</h3>
-      
+
       {/* Speed Options */}
       <div className="grid md:grid-cols-3 gap-4 mb-4">
         <button
           onClick={() => setAlertSpeed('instant')}
-          className={`p-4 rounded-xl border-2 transition-all ${
-            alertSpeed === 'instant'
+          className={`p-4 rounded-xl border-2 transition-all ${alertSpeed === 'instant'
               ? 'border-green-500 bg-green-50'
               : 'border-gray-200 hover:border-green-300'
-          }`}
+            }`}
         >
           <div className="flex items-center gap-2 mb-2">
             <Zap className={`w-5 h-5 ${alertSpeed === 'instant' ? 'text-green-600' : 'text-gray-400'}`} />
@@ -44,11 +58,10 @@ export default function AlertSettings() {
 
         <button
           onClick={() => setAlertSpeed('30min')}
-          className={`p-4 rounded-xl border-2 transition-all ${
-            alertSpeed === '30min'
+          className={`p-4 rounded-xl border-2 transition-all ${alertSpeed === '30min'
               ? 'border-green-500 bg-green-50'
               : 'border-gray-200 hover:border-green-300'
-          }`}
+            }`}
         >
           <div className="flex items-center gap-2 mb-2">
             <Clock className={`w-5 h-5 ${alertSpeed === '30min' ? 'text-green-600' : 'text-gray-400'}`} />
@@ -58,11 +71,10 @@ export default function AlertSettings() {
 
         <button
           onClick={() => setAlertSpeed('hourly')}
-          className={`p-4 rounded-xl border-2 transition-all ${
-            alertSpeed === 'hourly'
+          className={`p-4 rounded-xl border-2 transition-all ${alertSpeed === 'hourly'
               ? 'border-green-500 bg-green-50'
               : 'border-gray-200 hover:border-green-300'
-          }`}
+            }`}
         >
           <div className="flex items-center gap-2 mb-2">
             <Timer className={`w-5 h-5 ${alertSpeed === 'hourly' ? 'text-green-600' : 'text-gray-400'}`} />
@@ -118,8 +130,11 @@ export default function AlertSettings() {
       </div>
 
       {/* Save Button */}
-      <button className="px-8 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors">
-        Save
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="px-8 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors disabled:opacity-50">
+        {saving ? 'Saving...' : 'Save'}
       </button>
     </div>
   );

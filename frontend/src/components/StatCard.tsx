@@ -8,12 +8,12 @@ import type { Notification } from '../types';
 interface StatCardProps {
     label: string;
     value: number | string;
-    icon: React.ComponentType<{ className?: string }>;
+    icon: React.ReactNode;
     color: 'blue' | 'red' | 'green' | 'purple' | 'orange';
     trend?: number;
 }
 
-export default function StatCard({ label, value, icon: Icon, color, trend }: StatCardProps) {
+export default function StatCard({ label, value, icon, color, trend }: StatCardProps) {
     const colorClasses = {
         blue: 'bg-blue-100 text-blue-600',
         red: 'bg-red-100 text-red-600',
@@ -26,7 +26,7 @@ export default function StatCard({ label, value, icon: Icon, color, trend }: Sta
         <div className="bg-white rounded-xl shadow-lg p-4">
             <div className="flex justify-between items-start">
                 <div className={`inline-flex p-2 rounded-lg ${colorClasses[color]} mb-2`}>
-                    <Icon className="w-6 h-6" />
+                    {icon}
                 </div>
                 {trend !== undefined && (
                     <div className={`flex items-center text-sm font-medium ${trend >= 0 ? 'text-green-600' : 'text-red-600'

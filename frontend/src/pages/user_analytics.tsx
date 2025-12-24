@@ -8,7 +8,7 @@ import StatCard from '../components/StatCard';
 import { CategoryBar } from '../components/CategoryBar';
 import { SimpleBarChart } from '../components/SimpleBarChart';
 
-function UserDashboard() {
+export default function UserDashboard() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [timeRange, setTimeRange] = useState('week');
@@ -66,28 +66,28 @@ function UserDashboard() {
                 {/* Stats Cards */}
                 <div className="grid md:grid-cols-4 gap-6 mb-8">
                     <StatCard
-                        icon={Briefcase}
+                        icon={<Briefcase className="w-6 h-6" />}
                         label="Jobs Matched"
                         value={data.summary.total_jobs_matched}
                         trend={+12.5}
                         color="blue"
                     />
                     <StatCard
-                        icon={Bell}
+                        icon={<Bell className="w-6 h-6" />}
                         label="Notifications"
                         value={data.summary.total_notifications}
                         trend={+8.3}
                         color="green"
                     />
                     <StatCard
-                        icon={TrendingUp}
+                        icon={<TrendingUp className="w-6 h-6" />}
                         label="Avg Jobs/Day"
                         value={data.summary.avg_jobs_per_day}
                         trend={+5.2}
                         color="purple"
                     />
                     <StatCard
-                        icon={CheckCircle}
+                        icon={<CheckCircle className="w-6 h-6" />}
                         label="Response Rate"
                         value={`${data.summary.response_rate}%`}
                         trend={0}

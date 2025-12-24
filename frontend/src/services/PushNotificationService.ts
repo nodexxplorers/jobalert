@@ -64,7 +64,7 @@ export const pushNotificationService = {
       // Subscribe to push
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: pushNotificationService.urlBase64ToUint8Array(vapidPublicKey),
+        applicationServerKey: pushNotificationService.urlBase64ToUint8Array(vapidPublicKey) as unknown as BufferSource,
       });
 
       // Convert to our format
@@ -127,7 +127,7 @@ export const pushNotificationService = {
   },
 
   // Save subscription to backend
-  saveSubscription: async (userId: number, subscription: PushSubscription): Promise<void> => {
+  saveSubscription: async (_userId: number, subscription: PushSubscription): Promise<void> => {
     await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: {
@@ -139,7 +139,7 @@ export const pushNotificationService = {
   },
 
   // Remove subscription from backend
-  removeSubscription: async (userId: number): Promise<void> => {
+  removeSubscription: async (_userId: number): Promise<void> => {
     await fetch('/api/push/unsubscribe', {
       method: 'POST',
       headers: {

@@ -9,16 +9,16 @@ function AdminDashboard() {
     const [overview, setOverview] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        loadOverview();
-    }, []);
-
     const loadOverview = async () => {
         setLoading(true);
         const data = await adminAPI.getAdminOverview();
         setOverview(data);
         setLoading(false);
     };
+
+    useEffect(() => {
+        loadOverview();
+    }, []);
 
     if (loading) {
         return (
@@ -248,139 +248,148 @@ function AdminUsers() {
 
     return (
         <div>
-            {/* Toolbar */}
-            <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
-                <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search users..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        {selectedUsers.size > 0 && (
-                            <>
-                                <button className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition flex items-center gap-2">
-                                    <UserCheck className="w-4 h-4" />
-                                    Verify ({selectedUsers.size})
-                                </button>
-                                <button className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition flex items-center gap-2">
-                                    <UserX className="w-4 h-4" />
-                                    Deactivate ({selectedUsers.size})
-                                </button>
-                            </>
-                        )}
-                        <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition flex items-center gap-2">
-                            <Filter className="w-4 h-4" />
-                            Filter
-                        </button>
-                    </div>
+            {loading && (
+                <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin w-8 h-8 border-4 border-blue-200 border-t-blue-500 rounded-full" />
                 </div>
-            </div>
-
-            {/* Users Table */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-200">
-                        <tr>
-                            <th className="px-6 py-3 text-left">
+            )}
+            {!loading && (
+                <div>
+                    {/* Toolbar */}
+                    <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1 relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
-                                    type="checkbox"
-                                    className="rounded border-gray-300"
-                                    onChange={(e) => {
-                                        if (e.target.checked) {
-                                            setSelectedUsers(new Set(users.map(u => u.id)));
-                                        } else {
-                                            setSelectedUsers(new Set());
-                                        }
-                                    }}
+                                    type="text"
+                                    placeholder="Search users..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Active</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {users.map(user => (
-                            <tr key={user.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedUsers.has(user.id)}
-                                        onChange={() => toggleUser(user.id)}
-                                        className="rounded border-gray-300"
-                                    />
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">
-                                            {user.twitter_name[0]}
-                                        </div>
-                                        <div>
-                                            <div className="font-medium text-gray-900">{user.twitter_name}</div>
-                                            <div className="text-sm text-gray-500">@{user.twitter_username}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="flex flex-col gap-1">
-                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                                            }`}>
-                                            {user.is_active ? 'Active' : 'Inactive'}
-                                        </span>
-                                        {user.is_verified && (
-                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                Verified
-                                            </span>
-                                        )}
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-600">
-                                    {new Date(user.created_at).toLocaleDateString()}
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-600">
-                                    {new Date(user.last_login).toLocaleDateString()}
-                                </td>
-                                <td className="px-6 py-4">
-                                    <button className="p-2 hover:bg-gray-100 rounded-lg transition">
-                                        <MoreVertical className="w-5 h-5 text-gray-600" />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                            </div>
 
-                {/* Pagination */}
-                <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                    <div className="text-sm text-gray-600">
-                        Showing {(page - 1) * 10 + 1} to {Math.min(page * 10, 1247)} of 1,247 users
+                            <div className="flex items-center gap-2">
+                                {selectedUsers.size > 0 && (
+                                    <>
+                                        <button className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition flex items-center gap-2">
+                                            <UserCheck className="w-4 h-4" />
+                                            Verify ({selectedUsers.size})
+                                        </button>
+                                        <button className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition flex items-center gap-2">
+                                            <UserX className="w-4 h-4" />
+                                            Deactivate ({selectedUsers.size})
+                                        </button>
+                                    </>
+                                )}
+                                <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition flex items-center gap-2">
+                                    <Filter className="w-4 h-4" />
+                                    Filter
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                            disabled={page === 1}
-                            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
-                        >
-                            Previous
-                        </button>
-                        <button
-                            onClick={() => setPage(p => p + 1)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                        >
-                            Next
-                        </button>
+
+                    {/* Users Table */}
+                    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <table className="w-full">
+                            <thead className="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th className="px-6 py-3 text-left">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-gray-300"
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setSelectedUsers(new Set(users.map(u => u.id)));
+                                                } else {
+                                                    setSelectedUsers(new Set());
+                                                }
+                                            }}
+                                        />
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Active</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {users.map(user => (
+                                    <tr key={user.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedUsers.has(user.id)}
+                                                onChange={() => toggleUser(user.id)}
+                                                className="rounded border-gray-300"
+                                            />
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">
+                                                    {user.twitter_name[0]}
+                                                </div>
+                                                <div>
+                                                    <div className="font-medium text-gray-900">{user.twitter_name}</div>
+                                                    <div className="text-sm text-gray-500">@{user.twitter_username}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                    {user.is_active ? 'Active' : 'Inactive'}
+                                                </span>
+                                                {user.is_verified && (
+                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                        Verified
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">
+                                            {new Date(user.created_at).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">
+                                            {new Date(user.last_login).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <button className="p-2 hover:bg-gray-100 rounded-lg transition">
+                                                <MoreVertical className="w-5 h-5 text-gray-600" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        {/* Pagination */}
+                        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                            <div className="text-sm text-gray-600">
+                                Showing {(page - 1) * 10 + 1} to {Math.min(page * 10, 1247)} of 1,247 users
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    onClick={() => setPage(p => p + 1)}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }
