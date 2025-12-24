@@ -1,6 +1,6 @@
 # backend/app/main.py
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -21,6 +21,13 @@ from app.api.analytics import router as analytics_router
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)
+
+@app.middleware("http")
+async def https_middleware(request: Request, call_next):
+    # Proxy headers handling (e.g. Render, Vercel)
+    if request.headers.get("x-forwarded-proto") == "https":
+        request.scope["scheme"] = "https"
+    return await call_next(request)
 
 # CORS
 app.add_middleware(
