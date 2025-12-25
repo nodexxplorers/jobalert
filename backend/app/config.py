@@ -7,13 +7,13 @@ class Settings(BaseSettings):
     # App
     APP_NAME: str = "X Job Bot"
     DEBUG: bool = True
-    ENVIRONMENT: str = "development"
+    ENVIRONMENT: str 
     
     # Database (Supabase PostgreSQL)
     DATABASE_URL: str
     
     # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str
     
     # JWT
     SECRET_KEY: str
@@ -30,12 +30,11 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: Optional[str] = None
     
     # CORS
-    FRONTEND_URL: str = "http://localhost:5173"
-
+    FRONTEND_URL: str
     # X OAuth
     X_CLIENT_ID: str
     X_CLIENT_SECRET: str
-    X_CALLBACK_URL: str = "http://localhost:8000/api/auth/callback"
+    X_CALLBACK_URL: str
     
     class Config:
         env_file = ".env"
