@@ -1,4 +1,6 @@
 # backend/app/main.py
+import os
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware

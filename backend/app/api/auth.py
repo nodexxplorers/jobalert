@@ -1,6 +1,6 @@
 # backend/app/api/auth.py (FIXED)
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -81,6 +81,7 @@ def twitter_login():
 async def twitter_callback(
     code: str,
     state: str,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -104,8 +105,9 @@ async def twitter_callback(
             client_secret=settings.X_CLIENT_SECRET
         )
         
-        # Exchange code for access token
-        access_token_response = oauth.fetch_token(code)
+        # Exchange code for access token using full request URL
+        # This is the standard way to fix "insecure_transport" behind proxies
+        access_token_response = oauth.fetch_token(str(request.url))
         
         # Extract access token from response
         if isinstance(access_token_response, dict):

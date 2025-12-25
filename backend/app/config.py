@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     # X OAuth
     X_CLIENT_ID: str
     X_CLIENT_SECRET: str
-    X_CALLBACK_URL: str = "https://jobalert-o93o.onrender.com"
+    X_CALLBACK_URL: str = "https://jobalert-o93o.onrender.com/api/auth/callback"
     
     class Config:
         env_file = ".env"
