@@ -15,24 +15,31 @@ from app.api.auth import router as auth_router
 from app.api.settings import router as settings_router
 from app.api.admin import router as admin_router
 from app.api.analytics import router as analytics_router
-# from app.api import settings, notification
 
 # Create tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)
 
+# IMPORTANT: Add HTTPS middleware BEFORE CORS middleware
 @app.middleware("http")
 async def https_middleware(request: Request, call_next):
     # Proxy headers handling (e.g. Render, Vercel)
-    if request.headers.get("x-forwarded-proto") == "https":
+    # Check multiple proxy header sources
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    cf_visitor = request.headers.get("cf-visitor")
+    
+    if forwarded_proto == "https":
         request.scope["scheme"] = "https"
+    elif cf_visitor and "https" in cf_visitor.lower():
+        request.scope["scheme"] = "https"
+    
     return await call_next(request)
 
-# CORS
+# CORS middleware - must come after HTTPS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=[settings.FRONTEND_URL],  # Make sure this is "https://jobalert-ten.vercel.app"
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,18 +50,15 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
-# app.include_router(notification_router, prefix="/api"), tags=["notifications"])
 
 @app.post("/api/auth/register", response_model=UserResponse)
 def register(user: UserCreate, db: Session = Depends(get_db)):
     """Register new user"""
-    # Check if user exists
     existing = db.query(User).filter(User.email == user.email).first()
     
     if existing:
         raise HTTPException(status_code=400, detail="User already exists")
     
-    # Create user
     db_user = User(
         email=user.email,
         hashed_password=hash_password(user.password),
@@ -95,7 +99,6 @@ def onboarding(
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Update user with onboarding data
     if data.telegram_id:
         db_user.telegram_chat_id = str(data.telegram_id) if data.telegram_id else None
         db_user.preferences = data.preferences
@@ -131,7 +134,7 @@ def get_stats(db: Session = Depends(get_db)):
     return {
         "total_jobs": total_jobs,
         "total_users": total_users,
-        "jobs_today": 0  # TODO: Calculate
+        "jobs_today": 0
     }
 
 @app.get("/")
