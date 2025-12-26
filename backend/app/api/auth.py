@@ -1,11 +1,11 @@
-# backend/app/api/auth.py (FIXED)
+# backend/app/api/auth.py (Using Authlib for Twitter OAuth)
 
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from tweepy import OAuth2UserHandler
-import urllib.parse
+from authlib.integrations.httpx_client import OAuth2Client as OAuth2Session
+import httpx
 from datetime import datetime
 import tweepy
 from app.core.database import get_db
@@ -45,38 +45,46 @@ async def get_current_user(
 
 
 @router.get("/auth/twitter/login")
-def twitter_login():
+def twitter_login(request: Request):
     """
     Step 1: Redirect user to X OAuth page
     User clicks "Sign in with X" → calls this endpoint
     """
-    # Step 1: Initialize OAuth handler - force PKCE by setting client_secret=None
-    # Tweepy only generates code_verifier if client_secret is None
-    oauth = OAuth2UserHandler(
-        client_id=settings.X_CLIENT_ID,
-        redirect_uri=settings.X_CALLBACK_URL,
-        scope=["tweet.read", "users.read"],
-        client_secret=None
-    )
-    
-    # Get authorization URL - Tweepy generates state automatically
-    auth_url = oauth.get_authorization_url()
+    try:
+        # Verbose Logging for Debugging
+        print("--- Twitter OAuth Debug ---")
+        print(f"Client ID: {settings.X_CLIENT_ID[:5]}...{settings.X_CLIENT_ID[-5:]}")
+        print(f"Redirect URI: {settings.X_CALLBACK_URL}")
+        print(f"Scopes: {['users.read', 'tweet.read']}")
+        print("---------------------------")
 
-    # Extract state from the generated URL
-    parsed_url = urllib.parse.urlparse(auth_url)
-    state = urllib.parse.parse_qs(parsed_url.query).get('state', [None])[0]
-
-    if not state:
-        raise HTTPException(status_code=500, detail="Failed to generate OAuth state")
+        # Create OAuth2 session with Authlib
+        session = OAuth2Session(
+            client_id=settings.X_CLIENT_ID,
+            client_secret=settings.X_CLIENT_SECRET,
+            redirect_uri=settings.X_CALLBACK_URL,
+            scope=["users.read", "tweet.read"],
+        )
+        
+        # Generate authorization URL
+        auth_url, state = session.create_authorization_url(
+            "https://twitter.com/i/oauth2/authorize",
+            code_challenge_method="S256"
+        )
+        
+        print(f"Generated Auth URL: {auth_url}")
+        
+        # Store state for CSRF protection
+        request.session["oauth_state"] = state
+        
+        # Redirect to Twitter
+        return RedirectResponse(auth_url)
     
-    # Store state and code_verifier (required for PKCE)
-    oauth_states[state] = {
-        "created_at": datetime.now(),
-        "code_verifier": oauth.code_verifier
-    }
-    
-    # Redirect user to X login page
-    return RedirectResponse(auth_url)
+    except Exception as e:
+        print(f"Twitter login error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/auth/callback")
@@ -90,58 +98,47 @@ async def twitter_callback(
     Step 2: X redirects back with authorization code
     Exchange code for access token and get user info
     """
-    # Verify state (CSRF protection)
-    if state not in oauth_states:
-        error_url = f"{settings.FRONTEND_URL}/auth/error?message=Invalid+state"
-        return RedirectResponse(error_url)
-    
-    # Retrieve cached data
-    cached_data = oauth_states[state]
-    code_verifier = cached_data.get("code_verifier")
-    
-    # Remove used state
-    del oauth_states[state]
-    
     try:
-        # Step 2: Initialize OAuth handler with client_secret for the handshake
-        oauth = OAuth2UserHandler(
+        # Verify state (CSRF protection)
+        stored_state = request.session.get("oauth_state")
+        if not stored_state or stored_state != state:
+            error_url = f"{settings.FRONTEND_URL}/auth/error?message=Invalid+state"
+            return RedirectResponse(error_url)
+        
+        # Create new OAuth2 session for token exchange
+        session = OAuth2Session(
             client_id=settings.X_CLIENT_ID,
+            client_secret=settings.X_CLIENT_SECRET,
             redirect_uri=settings.X_CALLBACK_URL,
             scope=["tweet.read", "users.read"],
+        )
+        
+        # Exchange authorization code for access token
+        # Using standard api.twitter.com endpoint
+        token = session.fetch_token(
+            "https://api.twitter.com/2/oauth2/token",
+            code=code,
+            # For confidential clients, secret must be provided
+            client_id=settings.X_CLIENT_ID,
             client_secret=settings.X_CLIENT_SECRET
         )
         
-        # Exchange code for access token using full request URL and stored code_verifier
-        # PKCE requires the same code_verifier generated in the first step
-        auth_response = str(request.url)
-        if "localhost" not in auth_response:
-            auth_response = auth_response.replace("http://", "https://")
-            
-        access_token_response = oauth.fetch_token(
-            authorization_response=auth_response,
-            code_verifier=code_verifier
-        )
-        
-        # Extract access token from response
-        if isinstance(access_token_response, dict):
-            access_token = access_token_response.get('access_token')
-        else:
-            access_token = access_token_response
-        
+        # Get access token
+        access_token = token.get("access_token")
         if not access_token:
             raise ValueError("Failed to get access token")
         
-        # Get user info from X
+        # Get user info from X API
         client = tweepy.Client(bearer_token=access_token)
         me = client.get_me(user_fields=['profile_image_url', 'username', 'name'])
         
-        # Check if we got valid response
+        # Validate response
         if not me or not me.data:  # type: ignore
-            raise ValueError("Failed to get user info from Twitter")
+            raise ValueError("Failed to get user info from X")
         
         twitter_user = me.data  # type: ignore
         
-        # Check if user exists in database
+        # Check if user exists
         twitter_id_str = str(twitter_user.id)
         user = db.query(User).filter(User.twitter_id == twitter_id_str).first()
         
@@ -150,10 +147,10 @@ async def twitter_callback(
             user = User(
                 twitter_id=str(twitter_user.id),
                 username=twitter_user.username,
-                email=f"{twitter_user.username}@twitter.placeholder",  # X doesn't give email
+                email=f"{twitter_user.username}@twitter.placeholder",
                 display_name=twitter_user.name if hasattr(twitter_user, 'name') else twitter_user.username,
                 profile_image=twitter_user.profile_image_url if hasattr(twitter_user, 'profile_image_url') else None,
-                preferences=[],  # Will set later in onboarding
+                preferences=[],
                 keywords=[],
                 alert_speed='instant',
                 in_app_notifications=True
@@ -161,8 +158,6 @@ async def twitter_callback(
             db.add(user)
             db.commit()
             db.refresh(user)
-            
-            # New user - redirect to onboarding
             is_new_user = True
         else:
             is_new_user = False
@@ -171,11 +166,12 @@ async def twitter_callback(
         jwt_token = create_access_token(data={"sub": str(user.id)})
         
         # Redirect to frontend with token
+        # Note: frontend needs to handle 'new_user' if applicable
         redirect_url = f"{settings.FRONTEND_URL}/auth/callback?token={jwt_token}&new_user={is_new_user}"
         return RedirectResponse(redirect_url)
     
     except Exception as e:
-        print(f"OAuth error: {e}")
+        print(f"OAuth callback error: {e}")
         import traceback
         traceback.print_exc()
         

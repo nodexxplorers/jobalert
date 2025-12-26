@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.config import settings
@@ -21,7 +22,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)
 
-# IMPORTANT: Add HTTPS middleware BEFORE CORS middleware
+# IMPORTANT: HTTPS middleware FIRST (before all other middleware)
 @app.middleware("http")
 async def https_middleware(request: Request, call_next):
     # Proxy headers handling (e.g. Render, Vercel)
@@ -36,7 +37,14 @@ async def https_middleware(request: Request, call_next):
     
     return await call_next(request)
 
-# CORS middleware - must come after HTTPS middleware
+# SessionMiddleware - MUST come before CORS for Authlib to work
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SECRET_KEY,  # Make sure this exists in your settings
+    max_age=3600  # Session expires in 1 hour
+)
+
+# CORS middleware - comes after session middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.FRONTEND_URL],  # Make sure this is "https://jobalert-ten.vercel.app"

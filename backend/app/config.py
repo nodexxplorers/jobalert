@@ -32,11 +32,11 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: Optional[str] = None
     
     # CORS
-    FRONTEND_URL: str = "https://jobalert-peach.vercel.app"
+    FRONTEND_URL: str # = "https://jobalert-peach.vercel.app"
     # X OAuth
     X_CLIENT_ID: str
     X_CLIENT_SECRET: str
-    X_CALLBACK_URL: str = "https://jobalert-o93o.onrender.com/api/auth/callback"
+    X_CALLBACK_URL: str # = "https://jobalert-o93o.onrender.com/api/auth/callback"
     
     class Config:
         env_file = ".env"
