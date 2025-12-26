@@ -50,12 +50,13 @@ def twitter_login():
     Step 1: Redirect user to X OAuth page
     User clicks "Sign in with X" → calls this endpoint
     """
-    # Initialize OAuth handler
+    # Step 1: Initialize OAuth handler - force PKCE by setting client_secret=None
+    # Tweepy only generates code_verifier if client_secret is None
     oauth = OAuth2UserHandler(
         client_id=settings.X_CLIENT_ID,
         redirect_uri=settings.X_CALLBACK_URL,
-        scope=["tweet.read", "users.read"],  # Minimal permissions
-        client_secret=settings.X_CLIENT_SECRET
+        scope=["tweet.read", "users.read"],
+        client_secret=None
     )
     
     # Get authorization URL - Tweepy generates state automatically
@@ -102,7 +103,7 @@ async def twitter_callback(
     del oauth_states[state]
     
     try:
-        # Initialize OAuth handler
+        # Step 2: Initialize OAuth handler with client_secret for the handshake
         oauth = OAuth2UserHandler(
             client_id=settings.X_CLIENT_ID,
             redirect_uri=settings.X_CALLBACK_URL,
