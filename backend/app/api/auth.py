@@ -68,9 +68,10 @@ def twitter_login():
     if not state:
         raise HTTPException(status_code=500, detail="Failed to generate OAuth state")
     
-    # Store state temporarily (expires in 10 minutes)
+    # Store state and code_verifier (required for PKCE)
     oauth_states[state] = {
-        "created_at": datetime.now()
+        "created_at": datetime.now(),
+        "code_verifier": oauth.code_verifier
     }
     
     # Redirect user to X login page
@@ -93,6 +94,10 @@ async def twitter_callback(
         error_url = f"{settings.FRONTEND_URL}/auth/error?message=Invalid+state"
         return RedirectResponse(error_url)
     
+    # Retrieve cached data
+    cached_data = oauth_states[state]
+    code_verifier = cached_data.get("code_verifier")
+    
     # Remove used state
     del oauth_states[state]
     
@@ -105,9 +110,16 @@ async def twitter_callback(
             client_secret=settings.X_CLIENT_SECRET
         )
         
-        # Exchange code for access token using full request URL
-        # This is the standard way to fix "insecure_transport" behind proxies
-        access_token_response = oauth.fetch_token(str(request.url))
+        # Exchange code for access token using full request URL and stored code_verifier
+        # PKCE requires the same code_verifier generated in the first step
+        auth_response = str(request.url)
+        if "localhost" not in auth_response:
+            auth_response = auth_response.replace("http://", "https://")
+            
+        access_token_response = oauth.fetch_token(
+            authorization_response=auth_response,
+            code_verifier=code_verifier
+        )
         
         # Extract access token from response
         if isinstance(access_token_response, dict):

@@ -1,4 +1,6 @@
 # backend/app/config.py
+import os
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 from pydantic_settings import BaseSettings
 from typing import Optional
