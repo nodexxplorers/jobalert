@@ -22,6 +22,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     email: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
     google_id: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
+    google_email: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     display_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     profile_image: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     hashed_password: Mapped[Optional[str]] = mapped_column(String, nullable=True)

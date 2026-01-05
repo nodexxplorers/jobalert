@@ -11,6 +11,9 @@ class UserSettingsResponse(BaseModel):
     email: str
     display_name: Optional[str]
     profile_image: Optional[str]
+    twitter_id: Optional[str]
+    google_id: Optional[str]
+    google_email: Optional[str]
     preferences: List[str]
     telegram_chat_id: Optional[str]
     alert_speed: str

@@ -23,7 +23,37 @@ from app.api.notification import router as notification_router
 # Create tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)
+# ============================================================================
+# SCHEDULER SETUP
+# ============================================================================
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from app.api.admin import run_scrape_background
+from contextlib import asynccontextmanager
+
+scheduler = AsyncIOScheduler()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start scheduler
+    print("🕒 Starting Job Scheduler...", flush=True)
+    scheduler.add_job(
+        run_scrape_background, 
+        trigger=IntervalTrigger(hours=1), 
+        id="hourly_scrape", 
+        name="Hourly Job Scraping",
+        replace_existing=True
+    )
+    scheduler.start()
+    print("✅ Scheduler started - Jobs will be scraped every 1 hour", flush=True)
+    
+    yield
+    
+    # Shutdown scheduler
+    print("🛑 Shutting down scheduler...", flush=True)
+    scheduler.shutdown()
+
+app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG, lifespan=lifespan)
 
 # IMPORTANT: HTTPS middleware FIRST (before all other middleware)
 @app.middleware("http")

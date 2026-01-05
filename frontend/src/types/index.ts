@@ -7,6 +7,8 @@ export interface User {
   preferences: string[];
   telegram_chat_id?: string;
   twitter_id?: string;
+  google_id?: string;
+  google_email?: string;
   is_admin?: boolean;
   last_login?: string;
   created_at: string;

@@ -9,6 +9,9 @@ export interface UserSettings {
   email: string;
   display_name?: string;
   profile_image?: string;
+  twitter_id?: string;
+  google_id?: string;
+  google_email?: string;
   preferences: string[];
   telegram_chat_id?: string;
   alert_speed: 'instant' | '30min' | 'hourly';
@@ -70,7 +73,7 @@ export const settingsAPI = {
   uploadAvatar: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     const response = await api.post('/api/settings/upload-avatar', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',

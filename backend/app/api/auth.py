@@ -70,9 +70,9 @@ def twitter_callback(
     state: str,
     db: Session = Depends(get_db)
 ):
-    if state not in oauth_states:
+    if state not in oauth_states or "code_verifier" not in oauth_states[state]:
         return RedirectResponse(
-            f"{settings.FRONTEND_URL}/auth/error?message=Invalid+state"
+            f"{settings.FRONTEND_URL}/auth/error?message=Invalid+state+or+provider"
         )
 
     code_verifier = oauth_states[state]["code_verifier"]
@@ -195,6 +195,7 @@ def google_connect(
         "access_type=offline"
     )
 
+    print(f"DEBUG: Google Auth URL: {auth_url}")
     return {"url": auth_url}
 
 
@@ -267,6 +268,7 @@ def google_callback(
         user = db.query(User).filter(User.id == user_id).first()
         if user:
             user.google_id = google_id
+            user.google_email = google_email
             # Optionally update email if not set? 
             # user.email = user.email or google_email 
             db.commit()

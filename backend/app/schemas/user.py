@@ -32,6 +32,8 @@ class UserResponse(BaseModel):
     profile_image: Optional[str]
     is_admin: bool
     twitter_id: Optional[str]
+    google_id: Optional[str]
+    google_email: Optional[str]
     last_login: Optional[datetime]
     created_at: datetime
     

@@ -19,6 +19,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Handle 401 responses
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Auth endpoints
 export const authAPI = {
   register: (email: string, password: string, preferences: string[]) =>
