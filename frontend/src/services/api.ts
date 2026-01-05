@@ -79,6 +79,12 @@ export const jobsAPI = {
 
   getSavedJobs: (): Promise<Job[]> =>
     api.get('/api/jobs/saved').then(res => res.data),
+
+  saveJob: (jobId: number) =>
+    api.post(`/api/jobs/${jobId}/save`),
+
+  unsaveJob: (jobId: number) =>
+    api.delete(`/api/jobs/${jobId}/unsave`),
 };
 
 // User endpoints

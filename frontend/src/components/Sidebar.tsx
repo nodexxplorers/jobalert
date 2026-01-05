@@ -69,7 +69,7 @@ export default function Sidebar({ filters, onFiltersChange }: SidebarProps) {
               color="green"
             />
             <FilterCheckbox
-              label="Leng form"
+              label="Long form"
               checked={filters.jobType.includes('long_form')}
               onChange={() => toggleArrayFilter('jobType', 'long_form')}
             />

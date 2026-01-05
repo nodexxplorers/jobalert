@@ -15,7 +15,7 @@ export default function JobCard({ job, isSaved, onSave, onUnsave }: JobCardProps
     const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    
+
     if (hours > 0) return `${hours}h ago`;
     if (minutes > 0) return `${minutes} mins ago`;
     return 'Just now';
@@ -34,7 +34,7 @@ export default function JobCard({ job, isSaved, onSave, onUnsave }: JobCardProps
             alt={job.username}
             className="w-12 h-12 rounded-full"
           />
-          
+
           {/* User Info */}
           <div className="flex-1">
             <div className="flex items-center gap-2">
@@ -60,17 +60,40 @@ export default function JobCard({ job, isSaved, onSave, onUnsave }: JobCardProps
           <div className="flex items-center gap-2">
             <button
               onClick={isSaved ? onUnsave : onSave}
-              className={`p-2 rounded-lg transition-colors ${
-                isSaved 
-                  ? 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200' 
+              className={`p-2 rounded-lg transition-colors ${isSaved
+                  ? 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200'
                   : 'hover:bg-gray-100 text-gray-600'
-              }`}
+                }`}
             >
               <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
             </button>
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <MoreVertical className="w-5 h-5 text-gray-600" />
-            </button>
+
+            <div className="relative group">
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <MoreVertical className="w-5 h-5 text-gray-600" />
+              </button>
+
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 hidden group-hover:block z-20">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(job.tweet_url);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-50 rounded-lg text-sm text-gray-700 flex items-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Copy Link
+                </button>
+                <a
+                  href={job.tweet_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full text-left px-4 py-2 hover:bg-gray-50 rounded-lg text-sm text-gray-700 flex items-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  View on X
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -149,8 +172,8 @@ export default function JobCard({ job, isSaved, onSave, onUnsave }: JobCardProps
 
 //       {/* Content */}
 //       <p className="text-gray-700 leading-relaxed mb-4">
-//         I'm looking for a video editor for short, form content! 15-60 second clips. CapCut or 
-//         Premiere Pro. Must be able to deliver fast in YouTube Shorts / TikTok / Reels format. 
+//         I'm looking for a video editor for short, form content! 15-60 second clips. CapCut or
+//         Premiere Pro. Must be able to deliver fast in YouTube Shorts / TikTok / Reels format.
 //         Paid & remote. DM me your rates & examples.
 //       </p>
 

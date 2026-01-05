@@ -47,7 +47,9 @@ export default function Settings() {
 
           {/* Main Content */}
           <div className="space-y-6">
-            <ProfileSection user={settings} />
+            {activeTab === 'profile' && (
+              <ProfileSection user={settings} />
+            )}
 
             <div className="bg-white rounded-2xl shadow-lg p-8">
               <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
@@ -61,38 +63,55 @@ export default function Settings() {
                     <span>Back to Dashboard</span>
                   </button>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Settings
+                </h2>
               </div>
 
-              <ContactChannels
-                email={settings.email}
-                telegram={settings.telegram_chat_id || ''}
-                inAppNotifications={settings.in_app_notifications}
-                onSave={updateContactChannels}
-                saving={saving}
-              />
+              {activeTab === 'alerts' && (
+                <ContactChannels
+                  email={settings.email}
+                  telegram={settings.telegram_chat_id || ''}
+                  inAppNotifications={settings.in_app_notifications}
+                  onSave={updateContactChannels}
+                  saving={saving}
+                />
+              )}
 
-              <AlertSettings
-                alertSpeed={settings.alert_speed}
-                keywords={settings.keywords}
-                onSave={updateAlertSettings}
-                saving={saving}
-              />
+              {activeTab === 'keywords' && (
+                <AlertSettings
+                  alertSpeed={settings.alert_speed}
+                  keywords={settings.keywords}
+                  onSave={updateAlertSettings}
+                  saving={saving}
+                />
+              )}
 
-              <ConnectedAccounts user={settings as any} />
+              {activeTab === 'account' && (
+                <ConnectedAccounts user={settings as any} />
+              )}
+
+              {activeTab === 'profile' && (
+                <div className="text-gray-500 text-center py-8">
+                  Profile settings are shown above. <br />
+                  Use this section for additional profile preferences if needed.
+                </div>
+              )}
             </div>
           </div>
 
           {/* Right Sidebar */}
-          <RightSidebar />
+          <RightSidebar onTabChange={setActiveTab} />
         </div>
       </div>
     </div>
   );
 }
 
-// Right sidebar component (same as before)
-function RightSidebar() {
+// Right sidebar component
+function RightSidebar({ onTabChange }: { onTabChange: (tab: SettingsTab) => void }) {
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-6">
       {/* Boost Card */}
@@ -117,16 +136,21 @@ function RightSidebar() {
             icon="🔔"
             title="Manage Alerts"
             subtitle="You're getting notified instantly ✅"
+            onClick={() => onTabChange('alerts')}
           />
           <QuickLinkItem
             icon="📱"
-            title="You have 15 Subscribers"
+            title="Update Profile"
+            subtitle="Keep your info up to date"
             iconColor="text-blue-500"
+            onClick={() => onTabChange('profile')}
           />
           <QuickLinkItem
             icon="📗"
-            title="Saved 17 Jobs"
+            title="Saved Jobs"
+            subtitle="View your bookmarked jobs"
             iconColor="text-green-500"
+            onClick={() => navigate('/dashboard?tab=saved')}
           />
         </div>
       </div>
@@ -134,9 +158,12 @@ function RightSidebar() {
   );
 }
 
-function QuickLinkItem({ icon, title, subtitle, iconColor = 'text-blue-600' }: any) {
+function QuickLinkItem({ icon, title, subtitle, iconColor = 'text-blue-600', onClick }: any) {
   return (
-    <button className="flex items-center gap-3 w-full text-left py-3 hover:bg-gray-50 rounded-lg px-3 transition-colors">
+    <button
+      onClick={onClick}
+      className="flex items-center gap-3 w-full text-left py-3 hover:bg-gray-50 rounded-lg px-3 transition-colors"
+    >
       <span className={`text-xl ${iconColor}`}>{icon}</span>
       <div className="flex-1">
         <div className="font-medium text-gray-900 text-sm">{title}</div>

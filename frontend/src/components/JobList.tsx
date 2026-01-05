@@ -13,6 +13,8 @@ interface JobsListProps {
   onUnsaveJob: (jobId: number) => void;
   savedJobIds: number[];
   loading: boolean;
+  isRefreshing?: boolean;
+  onToggleFilters?: () => void;
   showViewAll?: boolean;
 }
 
@@ -24,6 +26,8 @@ export default function JobsList({
   onUnsaveJob,
   savedJobIds,
   loading,
+  isRefreshing = false,
+  onToggleFilters,
   showViewAll = false,
 }: JobsListProps) {
   return (
@@ -55,12 +59,25 @@ export default function JobsList({
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+          <button
+            onClick={onToggleFilters}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors lg:hidden"
+          >
             <Filter className="w-5 h-5 text-gray-600" />
           </button>
-          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <MoreVertical className="w-5 h-5 text-gray-600" />
-          </button>
+          <div className="relative group">
+            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <MoreVertical className="w-5 h-5 text-gray-600" />
+            </button>
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 hidden group-hover:block z-10">
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full text-left px-4 py-2 hover:bg-gray-50 rounded-lg text-sm text-gray-700"
+              >
+                Refresh Jobs
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -101,11 +118,11 @@ export default function JobsList({
         )}
 
         {/* Loading Overlay for background updates */}
-        {loading && jobs.length > 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
-            <div className="bg-white/80 p-4 rounded-2xl shadow-xl flex items-center gap-3 border border-green-100">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500"></div>
-              <span className="text-sm font-medium text-green-600">Refreshing jobs...</span>
+        {isRefreshing && jobs.length > 0 && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-none z-10 transition-opacity duration-300">
+            <div className="bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-sm">
+              <div className="animate-spin rounded-full h-3 w-3 border-2 border-white/30 border-t-white"></div>
+              <span>Updating...</span>
             </div>
           </div>
         )}

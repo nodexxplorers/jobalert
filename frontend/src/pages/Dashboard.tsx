@@ -26,6 +26,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'latest' | 'saved'>('latest');
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // Sync search param from URL to filters
   useEffect(() => {
@@ -38,13 +40,14 @@ export default function Dashboard() {
   useEffect(() => {
     loadDashboardData();
     // Auto-refresh every 30 seconds
-    const interval = setInterval(loadDashboardData, 30000);
+    const interval = setInterval(() => loadDashboardData(true), 30000);
     return () => clearInterval(interval);
   }, [filters]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (isBackground = false) => {
     try {
-      setLoading(true);
+      if (!isBackground) setLoading(true);
+      else setIsRefreshing(true);
 
       // Fetch user data
       const userData = await userAPI.getCurrentUser();
@@ -65,7 +68,6 @@ export default function Dashboard() {
 
       // Fetch analytics stats
       try {
-        console.log('Fetching stats...');
         const statsData = await userAPI.getStats();
         setStats(statsData);
       } catch (error) {
@@ -74,20 +76,38 @@ export default function Dashboard() {
     } catch (error) {
       console.error('CRITICAL: Failed to load dashboard data:', error);
     } finally {
-      console.log('Dashboard loading finished.');
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
-  const handleSaveJob = (jobId: number) => {
+  const handleSaveJob = async (jobId: number) => {
+    // Optimistic update
     const job = jobs.find(j => j.id === jobId);
     if (job && !savedJobs.find(j => j.id === jobId)) {
-      setSavedJobs([...savedJobs, job]);
+      setSavedJobs(prev => [...prev, job]);
+      try {
+        await jobsAPI.saveJob(job.id);
+      } catch (e) {
+        // Revert on failure
+        console.error("Failed to save job", e);
+        setSavedJobs(prev => prev.filter(j => j.id !== jobId));
+      }
     }
   };
 
-  const handleUnsaveJob = (jobId: number) => {
-    setSavedJobs(savedJobs.filter(j => j.id !== jobId));
+  const handleUnsaveJob = async (jobId: number) => {
+    // Optimistic update
+    const prevSaved = [...savedJobs];
+    setSavedJobs(prev => prev.filter(j => j.id !== jobId));
+
+    try {
+      await jobsAPI.unsaveJob(jobId);
+    } catch (e) {
+      // Revert
+      console.error("Failed to unsave job", e);
+      setSavedJobs(prevSaved);
+    }
   };
 
   const displayedJobs = activeTab === 'latest' ? jobs.slice(0, 5) : savedJobs;
@@ -115,15 +135,22 @@ export default function Dashboard() {
               onUnsaveJob={handleUnsaveJob}
               savedJobIds={savedJobs.map(j => j.id)}
               loading={loading}
+              isRefreshing={isRefreshing}
+              onToggleFilters={() => setShowMobileFilters(!showMobileFilters)}
               showViewAll={activeTab === 'latest' && jobs.length > 5}
             />
           </div>
 
           {/* Sidebar */}
-          <Sidebar
-            filters={filters}
-            onFiltersChange={setFilters}
-          />
+          <div className={`${showMobileFilters ? 'fixed inset-0 z-50 bg-white p-4 overflow-y-auto' : 'hidden lg:block'}`}>
+            <div className="lg:hidden flex justify-end mb-4">
+              <button onClick={() => setShowMobileFilters(false)} className="p-2 text-gray-500">Close</button>
+            </div>
+            <Sidebar
+              filters={filters}
+              onFiltersChange={setFilters}
+            />
+          </div>
         </div>
       </div>
     </div>
