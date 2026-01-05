@@ -19,7 +19,7 @@ class Job(Base):
     category: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     posted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     engagement: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     content_fingerprint: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     is_duplicate: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     original_job_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('jobs.id'), nullable=True)

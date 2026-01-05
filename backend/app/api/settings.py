@@ -136,11 +136,11 @@ def update_job_preferences(
     """Update job category preferences"""
     
     valid_categories = [
-        'video_editing',
-        'web_development',
-        'content_writing',
-        'graphic_design',
-        'motion_graphics'
+        'video-editing',
+        'web-dev',
+        'content-writing',
+        'design',
+        'motion-graphics'
     ]
     
     # Validate preferences

@@ -12,8 +12,11 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleOAuthCallback = async () => {
       const token = searchParams.get('token');
-      const isNewUser = searchParams.get('new_user') === 'true';
+      const newUserParam = searchParams.get('new_user');
+      const isNewUser = newUserParam === 'true' || newUserParam === 'True';
       const errorMessage = searchParams.get('message');
+
+      console.log('Auth callback params:', { token, newUserParam, isNewUser, errorMessage });
 
       // Handle error
       if (errorMessage) {
@@ -29,11 +32,14 @@ export default function AuthCallback() {
 
           // Redirect based on user status
           if (isNewUser) {
+            console.log('New user detected, redirecting to onboarding');
             navigate('/register?step=categories');  // Setup preferences
           } else {
+            console.log('Existing user, redirecting to dashboard');
             navigate('/dashboard');   // Go to dashboard
           }
-        } catch {
+        } catch (error) {
+          console.error('Auth callback error:', error);
           setError('Failed to authenticate');
           setTimeout(() => navigate('/'), 3000);
         }

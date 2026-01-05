@@ -1,15 +1,24 @@
 // src/components/Settings/ProfileSection.tsx
 import { Camera } from 'lucide-react';
 
-export default function ProfileSection({ user }: { user: any }) {
+interface User {
+  display_name?: string;
+  username?: string;
+  email?: string;
+  created_at?: string;
+  profile_image?: string;
+  is_pro?: boolean;
+}
+
+export default function ProfileSection({ user }: { user: User }) {
   // Use passed user data or fallbacks
   const displayUser = {
-    name: user?.name || 'User',
+    name: user?.display_name || user?.username || 'User',
     username: user?.username || 'user',
     email: user?.email || '',
     memberSince: user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently',
-    avatar: user?.avatar || '/user-avatar.jpg',
-    badge: user?.subscription_tier === 'pro' ? 'Pro Member' : 'Free Plan',
+    avatar: user?.profile_image || `https://ui-avatars.com/api/?name=${user?.username || 'User'}&background=667eea&color=fff&size=128`,
+    badge: user?.is_pro ? 'Pro Member' : 'Free Plan',
   };
 
   return (
@@ -21,9 +30,6 @@ export default function ProfileSection({ user }: { user: any }) {
             src={displayUser.avatar}
             alt={displayUser.name}
             className="w-24 h-24 rounded-full object-cover ring-4 ring-white shadow-lg"
-            onError={(e) => {
-              e.currentTarget.src = `https://ui-avatars.com/api/?name=${displayUser.name}&background=667eea&color=fff&size=128`;
-            }}
           />
           <button className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors opacity-0 group-hover:opacity-100">
             <Camera className="w-4 h-4 text-gray-600" />

@@ -1,11 +1,17 @@
 # backend/app/models/user.py
 
 from typing import Optional, List
-from sqlalchemy import Column, Integer, String, DateTime, JSON, Boolean
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-from sqlalchemy.sql import func
 from datetime import datetime
+from sqlalchemy import Column, Integer, String, DateTime, JSON, Boolean, Table, ForeignKey, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
+# Association table for saved jobs
+user_saved_jobs = Table(
+    "user_saved_jobs",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("job_id", Integer, ForeignKey("jobs.id"), primary_key=True)
+)
 
 class User(Base):
     __tablename__ = "users"
@@ -15,6 +21,7 @@ class User(Base):
     twitter_id: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
     username: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     email: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
+    google_id: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
     display_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     profile_image: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     hashed_password: Mapped[Optional[str]] = mapped_column(String, nullable=True)
@@ -33,3 +40,4 @@ class User(Base):
     
     # Relationships
     notifications = relationship("Notification", back_populates="user")
+    saved_jobs = relationship("Job", secondary=user_saved_jobs, backref="saved_by_users")

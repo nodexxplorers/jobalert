@@ -5,7 +5,7 @@ import DemoCard from './DemoCard';
 
 export default function Hero() {
   return (
-    <section className="relative overflow-hidden min-h-screen flex items-center pt-20 pb-14 lg:pb-19">
+    <section className="relative overflow-hidden min-h-screen flex items-center pt-10 pb-10 lg:pb-19">
       {/* Background Image */}
       <div className="absolute inset-0 z-10">
         <img 
@@ -24,7 +24,7 @@ export default function Hero() {
       </div>
 
       {/* Content - Centered */}
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-20">
+      <div className="container mx-auto py-4 px-4 sm:px-6 lg:px-8 relative z-20">
         <div className="flex flex-col items-center text-center">
           {/* Hero Content */}
           <div className="max-w-5xl">

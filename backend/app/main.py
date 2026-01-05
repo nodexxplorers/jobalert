@@ -10,12 +10,15 @@ from app.core.database import get_db, engine, Base
 from app.core.security import hash_password, verify_password, create_access_token, get_current_user
 from app.models.user import User
 from app.models.job import Job
+from app.models.system_status import SystemStatus
 from app.schemas.user import UserCreate, UserLogin, UserResponse, UserOnboarding
 from app.schemas.job import JobResponse
 from app.api.auth import router as auth_router
 from app.api.settings import router as settings_router
 from app.api.admin import router as admin_router
 from app.api.analytics import router as analytics_router
+from app.api.jobs import router as jobs_router
+from app.api.notification import router as notification_router
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -58,6 +61,8 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
+app.include_router(jobs_router, prefix="/api")
+app.include_router(notification_router, prefix="/api")
 
 @app.post("/api/auth/register", response_model=UserResponse)
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -95,43 +100,8 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         "user": UserResponse.from_orm(db_user)
     }
 
-@app.post("/api/auth/onboarding", response_model=UserResponse)
-def onboarding(
-    data: UserOnboarding,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Complete user onboarding"""
-    db_user = db.query(User).filter(User.id == current_user.id).first()
-    
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if data.telegram_id:
-        db_user.telegram_chat_id = str(data.telegram_id) if data.telegram_id else None
-        db_user.preferences = data.preferences
-        db_user.alert_speed = data.alert_speed
-        db_user.in_app_notifications = data.in_app_notifications
-    
-    db.commit()
-    db.refresh(db_user)
-    
-    return db_user
 
-@app.get("/api/jobs", response_model=List[JobResponse])
-def get_jobs(
-    category: Optional[str] = None,
-    limit: int = 50,
-    db: Session = Depends(get_db)
-):
-    """Get recent jobs"""
-    query = db.query(Job).order_by(Job.created_at.desc())
-    
-    if category:
-        query = query.filter(Job.category == category)
-    
-    jobs = query.limit(limit).all()
-    return jobs
+# Redundant job endpoints removed, now handled by jobs_router
 
 @app.get("/api/stats")
 def get_stats(db: Session = Depends(get_db)):
@@ -139,10 +109,16 @@ def get_stats(db: Session = Depends(get_db)):
     total_jobs = db.query(Job).count()
     total_users = db.query(User).count()
     
+    # Debug: Check categories in DB
+    from sqlalchemy import func
+    categories = db.query(Job.category, func.count(Job.id)).group_by(Job.category).all()
+    print(f"DEBUG: Total jobs: {total_jobs}, Categories in DB: {categories}")
+    
     return {
         "total_jobs": total_jobs,
         "total_users": total_users,
-        "jobs_today": 0
+        "jobs_today": 0,
+        "category_stats": {c[0]: c[1] for c in categories}
     }
 
 @app.get("/")

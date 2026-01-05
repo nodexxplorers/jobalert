@@ -1,7 +1,8 @@
 //  src/pages/NotificationHistory.tsx
 
 import { useState, useEffect } from 'react';
-import { Bell, CheckCheck, Filter } from 'lucide-react';
+import { Bell, CheckCheck, Filter, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import DashboardHeader from '../components/DashboardHeader';
 import { notificationAPI } from '../services/notificationAPI';
 import type { Notification, NotificationStats } from '../types';
@@ -9,6 +10,7 @@ import { toast } from 'react-hot-toast';
 import StatCard, { NotificationCard } from '../components/StatCard';
 
 export default function NotificationHistory() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [stats, setStats] = useState<NotificationStats | null>(null);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
@@ -55,15 +57,23 @@ export default function NotificationHistory() {
     }
   };
 
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this notification?')) return;
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return;
 
     try {
-      await notificationAPI.deleteNotification(id);
+      await notificationAPI.deleteNotification(deleteConfirmId);
       await loadData();
       toast.success('Notification deleted');
+      setDeleteConfirmId(null);
     } catch {
       toast.error('Failed to delete notification');
+      setDeleteConfirmId(null);
     }
   };
 
@@ -95,13 +105,22 @@ export default function NotificationHistory() {
                 View all your job alerts and notifications
               </p>
             </div>
-            <button
-              onClick={handleMarkAllAsRead}
-              className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-            >
-              <CheckCheck className="w-5 h-5" />
-              Mark All Read
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors shadow-sm"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                Back to Dashboard
+              </button>
+              <button
+                onClick={handleMarkAllAsRead}
+                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors shadow-sm"
+              >
+                <CheckCheck className="w-5 h-5" />
+                Mark All Read
+              </button>
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -184,6 +203,9 @@ export default function NotificationHistory() {
                   notification={notification}
                   onMarkAsRead={() => handleMarkAsRead(notification.id)}
                   onDelete={() => handleDelete(notification.id)}
+                  showDeleteConfirm={deleteConfirmId === notification.id}
+                  onConfirmDelete={confirmDelete}
+                  onCancelDelete={() => setDeleteConfirmId(null)}
                   onClick={() => handleClick(notification)}
                 />
               ))

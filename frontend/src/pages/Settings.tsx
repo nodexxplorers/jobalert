@@ -1,6 +1,8 @@
 // src/pages/Settings.tsx 
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
 import SettingsSidebar from '../components/Settings/SettingsSidebar';
 import ProfileSection from '../components/Settings/ProfileSection';
@@ -13,6 +15,7 @@ import { Toaster } from 'react-hot-toast';
 type SettingsTab = 'profile' | 'alerts' | 'keywords' | 'account';
 
 export default function Settings() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const { settings, loading, saving, updateContactChannels, updateAlertSettings } = useSettings();
 
@@ -36,7 +39,7 @@ export default function Settings() {
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-cyan-50 to-blue-50">
       <Toaster position="top-right" />
       <DashboardHeader />
-      
+
       <div className="container mx-auto px-4 py-6">
         <div className="grid lg:grid-cols-[280px_1fr_320px] gap-6">
           {/* Left Sidebar */}
@@ -45,10 +48,22 @@ export default function Settings() {
           {/* Main Content */}
           <div className="space-y-6">
             <ProfileSection user={settings} />
-            
+
             <div className="bg-white rounded-2xl shadow-lg p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Settings</h2>
-              
+              <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => navigate('/dashboard')}
+                    className="group flex items-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all text-gray-600 hover:text-green-600 font-medium"
+                    title="Return to Dashboard"
+                  >
+                    <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                    <span>Back to Dashboard</span>
+                  </button>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
+              </div>
+
               <ContactChannels
                 email={settings.email}
                 telegram={settings.telegram_chat_id || ''}
@@ -56,15 +71,15 @@ export default function Settings() {
                 onSave={updateContactChannels}
                 saving={saving}
               />
-              
+
               <AlertSettings
                 alertSpeed={settings.alert_speed}
                 keywords={settings.keywords}
                 onSave={updateAlertSettings}
                 saving={saving}
               />
-              
-              <ConnectedAccounts />
+
+              <ConnectedAccounts user={settings as any} />
             </div>
           </div>
 

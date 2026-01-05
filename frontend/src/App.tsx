@@ -9,6 +9,10 @@ import ProtectedRoute from './components/ProtectedRoute';
 import BiometricSetup from './pages/BiometricSetup';
 import Settings from './pages/Settings';
 import NotificationHistory from './pages/NotificationHistory';
+import AdminDashboard from './pages/admin/dashboard';
+import Jobs from './pages/Jobs';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 
 function App() {
   return (
@@ -18,6 +22,8 @@ function App() {
         <Route path="/register" element={<Registration />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/auth/error" element={<AuthCallback />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
 
         {/* Protected Routes */}
         <Route
@@ -49,6 +55,22 @@ function App() {
           element={
             <ProtectedRoute>
               <NotificationHistory />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/jobs"
+          element={
+            <ProtectedRoute>
+              <Jobs />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
             </ProtectedRoute>
           }
         />

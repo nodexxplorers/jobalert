@@ -1,6 +1,6 @@
 // src/components/Settings/SettingsSidebar.tsx
 
-import { User, Bell, Key, Settings, LogOut } from 'lucide-react';
+import { User, Bell, Key, Settings, LogOut, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/auth';
 
@@ -26,22 +26,31 @@ export default function SettingsSidebar({ activeTab, onTabChange }: SettingsSide
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6">
+      <button
+        onClick={() => navigate('/dashboard')}
+        className="w-full flex items-center gap-3 px-4 py-3 mb-4 text-gray-600 hover:bg-gray-50 hover:text-green-600 rounded-lg transition-colors group"
+      >
+        <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+        <span className="font-medium">Back to Dashboard</span>
+      </button>
+
+      <div className="border-t border-gray-100 my-4"></div>
+
       <h3 className="text-lg font-bold text-gray-900 mb-4">Settings</h3>
-      
+
       <nav className="space-y-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
-          
+
           return (
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive
-                  ? 'bg-green-50 text-green-700 border-l-4 border-green-500'
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                ? 'bg-green-50 text-green-700 border-l-4 border-green-500'
+                : 'text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <Icon className="w-5 h-5" />
               <span className="font-medium">{item.label}</span>

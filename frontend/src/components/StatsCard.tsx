@@ -1,24 +1,26 @@
 // FILE: src/components/Dashboard/StatsCards.tsx
 
 import { Zap, Bell, Briefcase } from 'lucide-react';
+import type { User } from '../types';
 
 interface StatsCardsProps {
+  user: User | null;
   savedCount: number;
   appliedCount: number;
   alertsToday: number;
 }
 
-export default function StatsCards({ savedCount, appliedCount, alertsToday }: StatsCardsProps) {
+export default function StatsCards({ user, savedCount, appliedCount, alertsToday }: StatsCardsProps) {
   return (
     <div className="mb-6">
       {/* Greeting */}
       <div className="flex items-center gap-2 mb-4">
         <span className="text-3xl">👋</span>
         <h1 className="text-2xl font-bold text-gray-900">
-          Arabic هادئ, Hadi!
+          Welcome, {user?.username || user?.email || 'User'}!
         </h1>
       </div>
-      <p className="text-gray-600 mb-6">Let's see what's new in the world of video editing.</p>
+      <p className="text-gray-600 mb-6">Let's see what's new in your job alerts today.</p>
 
       {/* Stats Cards */}
       <div className="grid md:grid-cols-3 gap-4">

@@ -1,7 +1,7 @@
 # backend/app/core/celery_app.py
 
 from celery import Celery
-from backend.app.core.celery_app.schedules import crontab
+from celery.schedules import crontab
 from app.config import settings
 
 celery_app = Celery(
@@ -21,7 +21,7 @@ celery_app.conf.update(
     beat_schedule={
         "scrape-twitter-jobs": {
             "task": "app.tasks.scraping_tasks.scrape_all_categories",
-            "schedule": crontab(minute="*/5"),  # Every 5 minutes
+            "schedule": crontab(minute=0),  # Every hour at the top of the hour
         },
     },
 )

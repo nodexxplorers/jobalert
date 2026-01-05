@@ -14,6 +14,7 @@ class UserLogin(BaseModel):
     password: str
 
 class UserOnboarding(BaseModel):
+    email: Optional[EmailStr] = None
     telegram_id: Optional[str] = None
     preferences: List[str]
     alert_speed: str = "instant"
@@ -26,6 +27,12 @@ class UserResponse(BaseModel):
     telegram_chat_id: Optional[str]
     alert_speed: str
     in_app_notifications: bool
+    username: str
+    display_name: Optional[str]
+    profile_image: Optional[str]
+    is_admin: bool
+    twitter_id: Optional[str]
+    last_login: Optional[datetime]
     created_at: datetime
     
     class Config:

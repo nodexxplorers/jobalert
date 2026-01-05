@@ -12,6 +12,7 @@ interface RegistrationData {
 }
 
 interface OnboardingData {
+  email: string;
   telegram: string;
   inAppNotifications: boolean;
   jobCategories: string[];
@@ -35,11 +36,25 @@ export default function JobAlertsApp() {
 
   const [biometricEnabled, setBiometricEnabled] = useState(false);
 
-  // Initialize step from URL
+  // Initialize step from URL and recover persisted data
   useEffect(() => {
     const step = searchParams.get('step') as Step;
     if (step && ['categories', 'alerts', 'frequency', 'biometric', 'success'].includes(step)) {
       setCurrentStep(step);
+    }
+
+    // Recover persisted email/password from localStorage
+    const savedData = localStorage.getItem('registration_temp_data');
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        if (parsed.email) {
+          setRegistrationData(prev => ({ ...prev, email: parsed.email, password: parsed.password || '' }));
+          setOnboardingData(prev => ({ ...prev, email: parsed.email }));
+        }
+      } catch (err) {
+        console.error('Failed to parse registration_temp_data', err);
+      }
     }
   }, [searchParams]);
 
@@ -49,6 +64,7 @@ export default function JobAlertsApp() {
   });
 
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
+    email: '',
     telegram: '',
     inAppNotifications: true,
     jobCategories: [],
@@ -66,6 +82,10 @@ export default function JobAlertsApp() {
 
   // Twitter login
   const handleTwitterLogin = () => {
+    // Save current registration data to localStorage before redirecting
+    // so we can recover the email/password after OAuth callback
+    localStorage.setItem('registration_temp_data', JSON.stringify(registrationData));
+
     setLoading(true);
     authAPI.loginWithTwitter();
   };
@@ -103,11 +123,16 @@ export default function JobAlertsApp() {
     setLoading(true);
     try {
       await authAPI.onboarding(
+        onboardingData.email,
         onboardingData.telegram || null,
         onboardingData.jobCategories,
         onboardingData.alertFrequency,
         onboardingData.inAppNotifications
       );
+
+      // Clear persisted data on success
+      localStorage.removeItem('registration_temp_data');
+
       setLoading(false);
       setCurrentStep('biometric');
     } catch (err) {
@@ -347,13 +372,20 @@ export default function JobAlertsApp() {
             </p>
 
             <div className="mb-6">
-              <label className="flex items-center gap-3 p-4 border-2 border-green-200 rounded-lg bg-green-50">
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-gray-300 transition cursor-pointer">
                 <Mail className="w-5 h-5 text-green-500" />
                 <div className="flex-1">
-                  <div className="text-gray-900 font-medium">{registrationData.email}</div>
+                  <input
+                    type="email"
+                    placeholder="your@email.com"
+                    value={onboardingData.email || registrationData.email}
+                    onChange={(e) =>
+                      setOnboardingData(prev => ({ ...prev, email: e.target.value }))
+                    }
+                    className="w-full outline-none text-gray-900 placeholder-gray-400 bg-transparent font-medium"
+                  />
                   <span className="text-xs text-gray-500">Email (Primary)</span>
                 </div>
-                <CheckCircle2 className="w-5 h-5 text-green-500" />
               </label>
             </div>
 

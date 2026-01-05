@@ -47,9 +47,12 @@ interface NotificationCardProps {
     onMarkAsRead: () => void;
     onDelete: () => void;
     onClick: () => void;
+    showDeleteConfirm?: boolean;
+    onConfirmDelete?: () => void;
+    onCancelDelete?: () => void;
 }
 
-export function NotificationCard({ notification, onMarkAsRead, onDelete, onClick }: NotificationCardProps) {
+export function NotificationCard({ notification, onMarkAsRead, onDelete, onClick, showDeleteConfirm, onConfirmDelete, onCancelDelete }: NotificationCardProps) {
     const timeAgo = (date: string) => {
         const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
         const minutes = Math.floor(seconds / 60);
@@ -126,13 +129,31 @@ export function NotificationCard({ notification, onMarkAsRead, onDelete, onClick
                             <Check className="w-5 h-5 text-gray-600" />
                         </button>
                     )}
-                    <button
-                        onClick={onDelete}
-                        className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete"
-                    >
-                        <Trash2 className="w-5 h-5 text-red-600" />
-                    </button>
+                    {showDeleteConfirm ? (
+                        <div className="flex items-center gap-2 bg-red-50 rounded-lg p-2 border border-red-200">
+                            <span className="text-sm text-red-700 font-medium">Delete?</span>
+                            <button
+                                onClick={onConfirmDelete}
+                                className="px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition"
+                            >
+                                Yes
+                            </button>
+                            <button
+                                onClick={onCancelDelete}
+                                className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300 transition"
+                            >
+                                No
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={onDelete}
+                            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete"
+                        >
+                            <Trash2 className="w-5 h-5 text-red-600" />
+                        </button>
+                    )}
                 </div>
             </div>
 

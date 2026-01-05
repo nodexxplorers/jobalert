@@ -3,17 +3,18 @@
 Admin Management API - User & System Management
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_, update, delete, and_
 from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
 
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.models.user import User
 from app.models.job import Job
 from app.models.notification import Notification
+from app.models.system_status import SystemStatus
 from app.core.security import require_admin
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -34,7 +35,7 @@ class UserUpdate(BaseModel):
 
 class BulkActionRequest(BaseModel):
     user_ids: List[int]
-    action: str  # 'activate', 'deactivate', 'delete', 'verify'
+    action: str  # 'activate', 'deactivate', 'delete', 'verify', 'promote_admin', 'demote_admin'
 
 
 class SystemSettings(BaseModel):
@@ -55,8 +56,24 @@ def get_admin_overview(
     db: Session = Depends(get_db)
 ):
     """
-    Get admin dashboard overview statistics
+    Get admin dashboard overview statistics with auto-reset for stuck scraping
     """
+    from datetime import datetime, timedelta
+    
+    # Check if scraping has been stuck for more than 30 minutes
+    status = db.query(SystemStatus).first()
+    if status and status.is_scraping:
+        # Check if updated_at is more than 30 minutes ago
+        if status.updated_at:
+            time_since_update = datetime.utcnow() - status.updated_at.replace(tzinfo=None)
+            if time_since_update > timedelta(minutes=30):
+                # Auto-reset stuck scraping
+                status.is_scraping = False
+                status.last_error = f"Auto-reset: Scraping appeared stuck (no update for {time_since_update.total_seconds()/60:.0f} minutes)"
+                db.commit()
+                print(f"⚠️ Auto-reset stuck scraping status (stuck for {time_since_update.total_seconds()/60:.0f} minutes)", flush=True)
+    
+    # Get admin dashboard overview statistics
     # User stats
     total_users = db.query(func.count(User.id)).scalar()
     
@@ -81,7 +98,7 @@ def get_admin_overview(
     
     # Notification stats
     total_notifications = db.query(func.count(Notification.id)).scalar() or 0
-    notifications_today = db.query(func.count(Notification.id)).filter(Notification.created_at >= today_start).scalar() or 0
+    notifications_today = db.query(func.count(Notification.id)).filter(Notification.sent_at >= today_start).scalar() or 0
     
     avg_notifications = round((total_notifications / total_users) if total_users > 0 else 0, 1)
 
@@ -100,8 +117,41 @@ def get_admin_overview(
             "total": total_notifications,
             "today": notifications_today,
             "avg_per_user": avg_notifications
-        }
+        },
+        "system": db.query(SystemStatus).first()
     }
+
+@router.post("/system/reset-status")
+def reset_system_status(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Manually reset the system scraping status (set is_scraping to False)
+    Use this if scraping appears stuck
+    """
+    try:
+        status = db.query(SystemStatus).first()
+        if not status:
+            status = SystemStatus(is_scraping=False)
+            db.add(status)
+        else:
+            status.is_scraping = False
+            status.last_error = "Manually reset by admin"
+        
+        db.commit()
+        db.refresh(status)
+        return {
+            "message": "System status reset successfully", 
+            "status": "idle",
+            "is_scraping": False
+        }
+    except Exception as e:
+        db.rollback()
+        return {
+            "message": f"Failed to reset status: {str(e)}",
+            "status": "error"
+        }
 
 @router.get("/users")
 def list_users(
@@ -158,14 +208,13 @@ def list_users(
             "email": user.email,
             "username": user.username,
             "display_name": user.display_name,
-            "profile_image": user.profile_image,
+            "twitter_name": user.display_name or user.username,
+            "twitter_username": user.username,
             "is_active": user.is_active,
-            "is_verified": user.is_verified,
+            "is_verified": getattr(user, 'is_verified', False), # Handle case where attr might be missing
             "is_admin": user.is_admin,
-            "preferences": user.preferences,
-            "alert_speed": user.alert_speed,
             "created_at": user.created_at,
-            "last_login": user.last_login
+            "last_login": user.last_login or user.created_at
         })
     
     return {
@@ -202,7 +251,7 @@ def get_user_details(
     # Get recent notifications
     recent_notifications = db.query(Notification)\
         .filter(Notification.user_id == user_id)\
-        .order_by(desc(Notification.created_at))\
+        .order_by(desc(Notification.sent_at))\
         .limit(10).all()
     
     return {
@@ -231,8 +280,8 @@ def get_user_details(
             {
                 "id": n.id,
                 "type": n.notification_type,
-                "created_at": n.created_at,
-                "status": n.status
+                "created_at": n.sent_at,
+                "status": "read" if n.is_read else "unread"
             }
             for n in recent_notifications
         ]
@@ -325,6 +374,18 @@ def bulk_user_action(
         db.query(User).filter(User.id.in_(user_ids)).update({User.is_active: True}, synchronize_session=False)
     elif action == 'deactivate':
         db.query(User).filter(User.id.in_(user_ids)).update({User.is_active: False}, synchronize_session=False)
+    elif action == 'verify':
+        db.query(User).filter(User.id.in_(user_ids)).update({User.is_verified: True}, synchronize_session=False)
+    elif action == 'promote_admin':
+        # Prevent demoting yourself
+        if current_user.id in user_ids:
+            raise HTTPException(status_code=400, detail="Cannot change your own admin status")
+        db.query(User).filter(User.id.in_(user_ids)).update({User.is_admin: True}, synchronize_session=False)
+    elif action == 'demote_admin':
+        # Prevent demoting yourself
+        if current_user.id in user_ids:
+            raise HTTPException(status_code=400, detail="Cannot change your own admin status")
+        db.query(User).filter(User.id.in_(user_ids)).update({User.is_admin: False}, synchronize_session=False)
     elif action == 'delete':
         db.query(User).filter(User.id.in_(user_ids)).update({User.is_active: False, User.deleted_at: datetime.utcnow()}, synchronize_session=False)
     else:
@@ -336,6 +397,57 @@ def bulk_user_action(
         "message": f"Action '{action}' performed on {len(user_ids)} users",
         "affected_users": len(user_ids)
     }
+
+
+@router.get("/users/export")
+def export_users(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Export all users to CSV
+    """
+    from fastapi.responses import Response
+    import csv
+    from io import StringIO
+    
+    users = db.query(User).all()
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow([
+        'ID', 'Username', 'Email', 'Display Name', 'Is Active', 
+        'Is Verified', 'Is Admin', 'Created At', 'Last Login', 
+        'Preferences', 'Alert Speed'
+    ])
+    
+    # Write data
+    for user in users:
+        writer.writerow([
+            user.id,
+            user.username,
+            user.email or '',
+            user.display_name or '',
+            user.is_active,
+            user.is_verified,
+            user.is_admin,
+            user.created_at.isoformat() if user.created_at else '',
+            user.last_login.isoformat() if user.last_login else '',
+            ','.join(user.preferences) if user.preferences else '',
+            user.alert_speed or ''
+        ])
+    
+    output.seek(0)
+    
+    return Response(
+        content=output.getvalue(),
+        media_type='text/csv',
+        headers={
+            'Content-Disposition': f'attachment; filename=users-export-{datetime.now().strftime("%Y-%m-%d")}.csv'
+        }
+    )
 
 
 # ============================================================================
@@ -493,48 +605,214 @@ def update_system_settings(
 # SYSTEM ACTIONS
 # ============================================================================
 
+def run_scrape_background():
+    """Helper function to run scrape in background using its own session"""
+    import sys
+    from app.services.job_scraping_service import JobScrapingService
+    from app.models.system_status import SystemStatus
+    
+    db = SessionLocal()
+    result = 0
+    try:
+        print("🚀 Starting background scrape task...", flush=True)
+        sys.stdout.flush()
+        service = JobScrapingService(db)
+        result = service.scrape_all_categories()
+        print(f"✅ Background scrape completed: {result} jobs found", flush=True)
+        sys.stdout.flush()
+        return result
+    except Exception as e:
+        print(f"❌ Background scraping failed: {e}", flush=True)
+        import traceback
+        print(traceback.format_exc(), flush=True)
+        sys.stdout.flush()
+        # Ensure status is reset even on error
+        try:
+            status = db.query(SystemStatus).first()
+            if status:
+                status.is_scraping = False
+                status.last_error = str(e)[:500]
+                db.commit()
+        except Exception as status_error:
+            print(f"⚠️ Failed to reset status on error: {status_error}", flush=True)
+            db.rollback()
+        raise
+    finally:
+        # Double-check status is reset
+        try:
+            status = db.query(SystemStatus).first()
+            if status and status.is_scraping:
+                print("⚠️ Status still shows scraping=True, forcing reset...", flush=True)
+                status.is_scraping = False
+                db.commit()
+        except:
+            pass
+        db.close()
+
 @router.post("/system/trigger-scrape")
 def trigger_manual_scrape(
+    background_tasks: BackgroundTasks,
+    sync: bool = Query(False, description="Run synchronously to see output in real-time"),
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
-    Manually trigger a scraping job
+    Manually trigger a scraping job.
+    
+    If sync=True, runs synchronously and returns results immediately (use for testing/debugging).
+    If sync=False, runs in background (default for production).
     """
-    
-    # In production, this would trigger a Celery task
-    # For now, return placeholder
-    
-    # from app.tasks.scraping_tasks import scrape_all_categories
-    
-    # Trigger async task
-    # task = scrape_all_categories.delay()
-    
-    return {
-        "message": "Scraping job triggered",
-        "task_id": "manual-trigger"
-    }
+    if sync:
+        # Run synchronously - output will be visible in console
+        try:
+            from app.services.job_scraping_service import JobScrapingService
+            service = JobScrapingService(db)
+            new_jobs = service.scrape_all_categories()
+            return {
+                "message": f"Scraping completed synchronously. Found {new_jobs} new jobs.",
+                "status": "success",
+                "new_jobs": new_jobs,
+                "sync": True
+            }
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"❌ Synchronous scrape error: {error_trace}", flush=True)
+            return {
+                "message": f"Scraping failed: {str(e)}",
+                "status": "error",
+                "error": str(e),
+                "traceback": error_trace
+            }
+    else:
+        # Run in background
+        background_tasks.add_task(run_scrape_background)
+        return {
+            "message": "Scraping process started in the background. Check console for output. New jobs will appear in a few minutes.",
+            "status": "success",
+            "sync": False,
+            "note": "To see output in real-time, use ?sync=true parameter"
+        }
 
 
 @router.post("/system/send-test-notification")
 def send_test_notification(
-    user_id: int,
+    user_id: Optional[int] = None,
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
-    Send a test notification to a user
+    Send a test notification to a specific user or ALL users
     """
+    from app.services.notification_service import NotificationService
     
-    user = db.query(User).filter(User.id == user_id).first()
+    users = []
+    if user_id:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        users.append(user)
+    else:
+        # Broadcast to all active users
+        users = db.query(User).filter(User.is_active == True).all()
     
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    notification_service = NotificationService(db)
     
-    # Send test notification
-    # from app.services.notifications import NotificationService
+    count = 0
+    for user in users:
+        print(f"📣 Sending test notification to {user.username}")
+        notification_service.send_simple_notification(
+            user=user,
+            subject="🚀 Test Notification",
+            message="This is a test notification from the Admin Dashboard. If you're seeing this, your notification channels are working correctly!"
+        )
+        count += 1
     
-    # notification_service = NotificationService()
-    # notification_service.send_test_notification(user)
+    return {
+        "message": f"Test notification sent to {count} users",
+        "status": "success",
+        "count": count
+    }
+
+
+@router.post("/system/migrate-categories")
+def migrate_categories(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Migrate all users and jobs to use hyphenated-categories (e.g. video_editing -> video-editing)
+    """
+    category_map = {
+        'video_editing': 'video-editing',
+        'web_development': 'web-dev',
+        'content_writing': 'content-writing',
+        'graphic_design': 'design',
+        'motion_graphics': 'motion-graphics'
+    }
     
-    return {"message": "Test notification sent"}
+    users_updated = 0
+    jobs_updated = 0
+    
+    from app.models.user import User
+    from app.models.job import Job
+    
+    # Update users
+    users = db.query(User).all()
+    for user in users:
+        if user.preferences:
+            new_prefs = []
+            changed = False
+            for pref in user.preferences:
+                if pref in category_map:
+                    new_prefs.append(category_map[pref])
+                    changed = True
+                else:
+                    new_prefs.append(pref)
+            
+            if changed:
+                user.preferences = new_prefs
+                users_updated += 1
+    
+    # Update jobs
+    jobs = db.query(Job).all()
+    for job in jobs:
+        if job.category in category_map:
+            job.category = category_map[job.category]
+            jobs_updated += 1
+    
+    db.commit()
+    
+    return {
+        "message": "Migration completed",
+        "users_updated": users_updated,
+        "jobs_updated": jobs_updated
+    }
+
+@router.post("/system/update-cookies")
+def update_twitter_cookies(
+    payload: dict,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Update the Twitter session cookies used for scraping.
+    Pasting valid exported JSON cookies allows bypassing login challenges.
+    """
+    try:
+        cookies = payload.get("cookies")
+        if not cookies:
+            raise HTTPException(status_code=400, detail="No cookies provided")
+            
+        status = db.query(SystemStatus).first()
+        if not status:
+            status = SystemStatus(twitter_cookies=cookies)
+            db.add(status)
+        else:
+            status.twitter_cookies = cookies
+            
+        db.commit()
+        return {"message": "Twitter cookies updated successfully", "status": "success"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

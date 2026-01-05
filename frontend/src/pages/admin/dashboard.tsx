@@ -1,29 +1,79 @@
 // ADMIN DASHBOARD
 
-import { useState, useEffect } from 'react';
-import { adminAPI } from '../../services/api';
-import { BarChart3, Users, Briefcase, Bell, Activity, RefreshCw, Download, Trash2, UserCheck, UserX, Filter, MoreVertical, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { adminAPI, userAPI } from '../../services/api';
+import { authService } from '../../services/auth';
+import type { User } from '../../types';
+import { BarChart3, Users, Briefcase, Bell, Activity, RefreshCw, Download, Trash2, UserCheck, Filter, MoreVertical, Search, ArrowLeft, LogOut, Shield, ShieldOff, Ban, Unlock, X } from 'lucide-react';
 
 function AdminDashboard() {
     const [view, setView] = useState<'overview' | 'users' | 'jobs'>('overview');
     const [overview, setOverview] = useState<any>(null);
+    const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+
+    const [error, setError] = useState<string | null>(null);
 
     const loadOverview = async () => {
-        setLoading(true);
-        const data = await adminAPI.getAdminOverview();
-        setOverview(data);
-        setLoading(false);
+        try {
+            setError(null);
+            setLoading(true);
+            const data = await adminAPI.getAdminOverview();
+            setOverview(data);
+        } catch (err) {
+            console.error('Failed to load admin overview:', err);
+            setError('Failed to load system overview. Please check your connection or permissions.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
-        loadOverview();
+        const initDashboard = async () => {
+            try {
+                const [overviewData, userData] = await Promise.all([
+                    adminAPI.getAdminOverview(),
+                    userAPI.getCurrentUser()
+                ]);
+                setOverview(overviewData);
+                setUser(userData);
+            } catch (err) {
+                console.error('Failed to initialize admin dashboard:', err);
+                setError('Failed to load system data. Please check your connection or permissions.');
+            } finally {
+                setLoading(false);
+            }
+        };
+        initDashboard();
     }, []);
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen">
+            <div className="flex flex-col items-center justify-center h-screen gap-4">
                 <div className="animate-spin w-8 h-8 border-4 border-blue-200 border-t-blue-500 rounded-full" />
+                <p className="text-gray-500 animate-pulse">Loading administrator tools...</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center h-screen gap-6 p-6 text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600 mb-2">
+                    <Activity className="w-8 h-8" />
+                </div>
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h1>
+                    <p className="text-gray-600 max-w-md">{error}</p>
+                </div>
+                <button
+                    onClick={loadOverview}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition shadow-lg"
+                >
+                    Try Again
+                </button>
             </div>
         );
     }
@@ -39,15 +89,35 @@ function AdminDashboard() {
                             <p className="text-gray-600">System overview and management</p>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
-                                <RefreshCw className="w-4 h-4" />
-                                Refresh
+                        <div className="flex items-center gap-6">
+                            <button
+                                onClick={() => navigate('/dashboard')}
+                                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                            >
+                                <ArrowLeft className="w-4 h-4" />
+                                <span className="hidden sm:inline">Back to Dashboard</span>
                             </button>
-                            <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition flex items-center gap-2">
-                                <Download className="w-4 h-4" />
-                                Export
-                            </button>
+
+                            {user && (
+                                <div className="flex items-center gap-3 pl-6 border-l border-gray-200">
+                                    <div className="text-right hidden sm:block">
+                                        <div className="text-sm font-semibold text-gray-900">{user.username}</div>
+                                        <div className="text-xs text-gray-500">Administrator</div>
+                                    </div>
+                                    <img
+                                        src={user.profile_image || `https://ui-avatars.com/api/?name=${user.username}&background=667eea&color=fff`}
+                                        alt={user.username}
+                                        className="w-10 h-10 rounded-full border border-gray-200 shadow-sm"
+                                    />
+                                    <button
+                                        onClick={() => authService.logout()}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                        title="Logout"
+                                    >
+                                        <LogOut className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -83,7 +153,7 @@ function AdminDashboard() {
 
             {/* Content */}
             <div className="max-w-7xl mx-auto p-6">
-                {view === 'overview' && <AdminOverview data={overview} />}
+                {view === 'overview' && <AdminOverview data={overview} user={user} />}
                 {view === 'users' && <AdminUsers />}
                 {view === 'jobs' && <AdminJobs />}
             </div>
@@ -130,16 +200,46 @@ function HealthIndicator({ label, status, value }: any) {
     );
 }
 
-function ActionButton({ label, icon: Icon }: any) {
+function ActionButton({ label, icon: Icon, onClick, loading }: any) {
     return (
-        <button className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition border border-gray-100 group">
+        <button
+            onClick={onClick}
+            disabled={loading}
+            className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition border border-gray-100 group disabled:opacity-50"
+        >
             <span className="text-gray-700 font-medium group-hover:text-gray-900">{label}</span>
-            <Icon className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+            {loading ? (
+                <div className="animate-spin w-4 h-4 border-2 border-blue-200 border-t-blue-500 rounded-full" />
+            ) : (
+                <Icon className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+            )}
         </button>
     );
 }
 
-function AdminOverview({ data }: { data: any }) {
+function AdminOverview({ data, user }: { data: any, user: any }) {
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [cookies, setCookies] = useState(data?.system?.twitter_cookies || '');
+
+    useEffect(() => {
+        if (data?.system?.twitter_cookies) {
+            setCookies(data.system.twitter_cookies);
+        }
+    }, [data?.system?.twitter_cookies]);
+
+    const handleAction = async (name: string, apiCall: () => Promise<any>) => {
+        try {
+            setActionLoading(name);
+            const response = await apiCall();
+            alert(response.message || 'Action completed successfully');
+        } catch (err: any) {
+            console.error(`Action ${name} failed:`, err);
+            alert(`Failed to ${name}: ${err.response?.data?.detail || err.message}`);
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
     if (!data) return null;
     return (
         <div>
@@ -179,9 +279,13 @@ function AdminOverview({ data }: { data: any }) {
                 </h3>
                 <div className="grid md:grid-cols-4 gap-4">
                     <HealthIndicator label="API Status" status="healthy" value="99.9%" />
-                    <HealthIndicator label="Scraping" status="healthy" value="Active" />
-                    <HealthIndicator label="Notifications" status="healthy" value="Queue: 23" />
-                    <HealthIndicator label="Database" status="healthy" value="12.4 GB" />
+                    <HealthIndicator
+                        label="Scraping"
+                        status={data?.system?.is_scraping ? 'warning' : 'healthy'}
+                        value={data?.system?.is_scraping ? 'In Progress...' : 'Idle'}
+                    />
+                    <HealthIndicator label="Last Scrape" status="healthy" value={data?.system?.last_scrape_at ? new Date(data.system.last_scrape_at).toLocaleTimeString() : 'Never'} />
+                    <HealthIndicator label="Jobs (Last Run)" status="healthy" value={data?.system?.last_jobs_found || 0} />
                 </div>
             </div>
 
@@ -190,10 +294,96 @@ function AdminOverview({ data }: { data: any }) {
                 <div className="bg-white rounded-xl shadow-lg p-6">
                     <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
                     <div className="space-y-3">
-                        <ActionButton label="Trigger Manual Scrape" icon={RefreshCw} />
-                        <ActionButton label="Send Test Notification" icon={Bell} />
-                        <ActionButton label="Clean Up Duplicates" icon={Trash2} />
-                        <ActionButton label="Export User Data" icon={Download} />
+                        <ActionButton
+                            label={data?.system?.is_scraping ? "Scraping in Progress..." : "Trigger Manual Scrape"}
+                            icon={RefreshCw}
+                            loading={actionLoading === 'scrape' || data?.system?.is_scraping}
+                            onClick={async () => {
+                                if (data?.system?.is_scraping) {
+                                    // If already scraping, show option to reset
+                                    if (confirm('Scraping is already in progress. Do you want to reset the status? This will mark scraping as complete.')) {
+                                        try {
+                                            setActionLoading('reset');
+                                            await adminAPI.resetSystemStatus();
+                                            alert('Status reset successfully. Refreshing...');
+                                            window.location.reload();
+                                        } catch (err: any) {
+                                            console.error('Reset failed:', err);
+                                            alert(`Failed to reset status: ${err.response?.data?.detail || err.message}`);
+                                        } finally {
+                                            setActionLoading(null);
+                                        }
+                                    }
+                                    return;
+                                }
+
+                                try {
+                                    setActionLoading('scrape');
+                                    // Use sync=false for background processing
+                                    const response = await adminAPI.triggerScrape(false);
+                                    if (response.sync) {
+                                        alert(`Scraping completed! Found ${response.new_jobs || 0} new jobs.\n\nCheck console for detailed output.`);
+                                    } else {
+                                        alert(response.message || 'Scraping started in background. Check console for output.');
+                                    }
+                                    // Refresh data after a short delay
+                                    setTimeout(() => {
+                                        window.location.reload();
+                                    }, 2000);
+                                } catch (err: any) {
+                                    console.error('Scrape failed:', err);
+                                    alert(`Failed to start scrape: ${err.response?.data?.detail || err.message}\n\nCheck console for details.`);
+                                } finally {
+                                    setActionLoading(null);
+                                }
+                            }}
+                        />
+                        {data?.system?.is_scraping && (
+                            <ActionButton
+                                label="Reset Status (If Stuck)"
+                                icon={RefreshCw}
+                                loading={actionLoading === 'reset'}
+                                onClick={async () => {
+                                    if (confirm('Are you sure you want to reset the scraping status? This should only be used if scraping appears stuck.')) {
+                                        try {
+                                            setActionLoading('reset');
+                                            await adminAPI.resetSystemStatus();
+                                            alert('Status reset successfully. Refreshing...');
+                                            window.location.reload();
+                                        } catch (err: any) {
+                                            console.error('Reset failed:', err);
+                                            alert(`Failed to reset status: ${err.response?.data?.detail || err.message}`);
+                                        } finally {
+                                            setActionLoading(null);
+                                        }
+                                    }
+                                }}
+                            />
+                        )}
+                        <ActionButton
+                            label="Migrate Categories"
+                            icon={Filter}
+                            loading={actionLoading === 'migrate'}
+                            onClick={() => handleAction('migrate', adminAPI.migrateCategories)}
+                        />
+                        <ActionButton
+                            label="Send Test Notification"
+                            icon={Bell}
+                            loading={actionLoading === 'test-notify'}
+                            onClick={() => handleAction('test-notify', () => adminAPI.sendTestNotification(user?.id || 0))}
+                        />
+                        <ActionButton
+                            label="Clean Up Duplicates"
+                            icon={Trash2}
+                            loading={actionLoading === 'cleanup'}
+                            onClick={() => handleAction('cleanup', adminAPI.cleanupDuplicates)}
+                        />
+                        <ActionButton
+                            label="Export User Data"
+                            icon={Download}
+                            loading={actionLoading === 'export'}
+                            onClick={() => handleAction('export', adminAPI.exportUserData)}
+                        />
                     </div>
                 </div>
 
@@ -213,6 +403,50 @@ function AdminOverview({ data }: { data: any }) {
                         ))}
                     </div>
                 </div>
+
+                {/* Cookie Manager */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Shield className="w-5 h-5 text-blue-600" />
+                        <h3 className="text-lg font-semibold">Twitter Session Cookies</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-4">
+                        Pasting session cookies allows the scraper to bypass login challenges.
+                        Use a browser extension (like "EditThisCookie") to export cookies as JSON from x.com.
+                    </p>
+                    <textarea
+                        className="w-full h-32 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
+                        placeholder='[{"name": "auth_token", "value": "..."}, ...]'
+                        value={cookies}
+                        onChange={(e) => setCookies(e.target.value)}
+                        id="cookie-textarea"
+                    />
+                    <button
+                        onClick={async () => {
+                            if (!cookies) return alert('Please paste cookies first');
+
+                            try {
+                                setActionLoading('cookies');
+                                await adminAPI.updateCookies(cookies);
+                                alert('Cookies updated successfully!');
+                                window.location.reload();
+                            } catch (err: any) {
+                                alert(`Failed to update cookies: ${err.message}`);
+                            } finally {
+                                setActionLoading(null);
+                            }
+                        }}
+                        disabled={actionLoading === 'cookies'}
+                        className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                        {actionLoading === 'cookies' ? (
+                            <div className="animate-spin w-4 h-4 border-2 border-white/20 border-t-white rounded-full" />
+                        ) : (
+                            <Shield className="w-4 h-4" />
+                        )}
+                        Update Session Cookies
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -221,19 +455,68 @@ function AdminOverview({ data }: { data: any }) {
 function AdminUsers() {
     const [users, setUsers] = useState<any[]>([]);
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+    const [selectedUser, setSelectedUser] = useState<any | null>(null);
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+            setPage(1); // Reset to first page on search
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [search]);
 
     useEffect(() => {
         loadUsers();
-    }, [page, search]);
+    }, [page, debouncedSearch, statusFilter]);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setOpenMenuId(null);
+            }
+        };
+
+        if (openMenuId !== null) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [openMenuId]);
 
     const loadUsers = async () => {
-        setLoading(true);
-        const data = await adminAPI.getAdminUsers(page, search);
-        setUsers(data.users);
-        setLoading(false);
+        try {
+            setLoading(true);
+            const data = await adminAPI.getAdminUsers(page, debouncedSearch, statusFilter === 'all' ? undefined : statusFilter);
+            setUsers(data.users);
+        } catch (err) {
+            console.error('Failed to load users:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadUserDetails = async (userId: number) => {
+        try {
+            const data = await adminAPI.getUserDetails(userId);
+            setSelectedUser(data);
+            setShowUserModal(true);
+        } catch (err) {
+            console.error('Failed to load user details:', err);
+            alert('Failed to load user details');
+        }
     };
 
     const toggleUser = (userId: number) => {
@@ -244,6 +527,39 @@ function AdminUsers() {
             newSelected.add(userId);
         }
         setSelectedUsers(newSelected);
+    };
+
+    const handleBulkAction = async (action: 'activate' | 'deactivate' | 'verify' | 'delete' | 'promote_admin' | 'demote_admin') => {
+        if (selectedUsers.size === 0) {
+            alert('Please select at least one user');
+            return;
+        }
+
+        const confirmMessage = {
+            activate: 'Are you sure you want to activate (unban) the selected users?',
+            deactivate: 'Are you sure you want to deactivate (ban) the selected users?',
+            verify: 'Are you sure you want to verify the selected users?',
+            promote_admin: 'Are you sure you want to promote the selected users to admin?',
+            demote_admin: 'Are you sure you want to remove admin privileges from the selected users?',
+            delete: 'Are you sure you want to delete the selected users? This action cannot be undone.'
+        };
+
+        if (!confirm(confirmMessage[action])) {
+            return;
+        }
+
+        try {
+            setActionLoading(action);
+            const response = await adminAPI.bulkUserAction(Array.from(selectedUsers), action);
+            alert(response.message || 'Action completed successfully');
+            setSelectedUsers(new Set());
+            loadUsers();
+        } catch (err: any) {
+            console.error(`Bulk action ${action} failed:`, err);
+            alert(`Failed to ${action} users: ${err.response?.data?.detail || err.message}`);
+        } finally {
+            setActionLoading(null);
+        }
     };
 
     return (
@@ -272,20 +588,63 @@ function AdminUsers() {
                             <div className="flex items-center gap-2">
                                 {selectedUsers.size > 0 && (
                                     <>
-                                        <button className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleBulkAction('verify')}
+                                            disabled={actionLoading !== null}
+                                            className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition flex items-center gap-2 disabled:opacity-50"
+                                        >
                                             <UserCheck className="w-4 h-4" />
                                             Verify ({selectedUsers.size})
                                         </button>
-                                        <button className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition flex items-center gap-2">
-                                            <UserX className="w-4 h-4" />
-                                            Deactivate ({selectedUsers.size})
+                                        <button
+                                            onClick={() => handleBulkAction('activate')}
+                                            disabled={actionLoading !== null}
+                                            className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            <Unlock className="w-4 h-4" />
+                                            Unban ({selectedUsers.size})
+                                        </button>
+                                        <button
+                                            onClick={() => handleBulkAction('deactivate')}
+                                            disabled={actionLoading !== null}
+                                            className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            <Ban className="w-4 h-4" />
+                                            Ban ({selectedUsers.size})
+                                        </button>
+                                        <button
+                                            onClick={() => handleBulkAction('promote_admin')}
+                                            disabled={actionLoading !== null}
+                                            className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            <Shield className="w-4 h-4" />
+                                            Promote ({selectedUsers.size})
+                                        </button>
+                                        <button
+                                            onClick={() => handleBulkAction('delete')}
+                                            disabled={actionLoading !== null}
+                                            className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                            Delete ({selectedUsers.size})
                                         </button>
                                     </>
                                 )}
-                                <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition flex items-center gap-2">
-                                    <Filter className="w-4 h-4" />
-                                    Filter
-                                </button>
+                                <div className="flex items-center gap-2 border border-gray-300 rounded-lg p-1">
+                                    <Filter className="w-4 h-4 text-gray-400 ml-2" />
+                                    <select
+                                        value={statusFilter}
+                                        onChange={(e) => {
+                                            setStatusFilter(e.target.value as any);
+                                            setPage(1);
+                                        }}
+                                        className="px-3 py-1 border-none outline-none bg-transparent text-sm"
+                                    >
+                                        <option value="all">All Users</option>
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -327,15 +686,18 @@ function AdminUsers() {
                                             />
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => loadUserDetails(user.id)}
+                                                className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+                                            >
                                                 <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">
-                                                    {user.twitter_name[0]}
+                                                    {user.twitter_name?.[0] || user.username?.[0] || 'U'}
                                                 </div>
                                                 <div>
-                                                    <div className="font-medium text-gray-900">{user.twitter_name}</div>
-                                                    <div className="text-sm text-gray-500">@{user.twitter_username}</div>
+                                                    <div className="font-medium text-gray-900">{user.twitter_name || user.display_name || user.username}</div>
+                                                    <div className="text-sm text-gray-500">@{user.twitter_username || user.username}</div>
                                                 </div>
-                                            </div>
+                                            </button>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
@@ -356,10 +718,149 @@ function AdminUsers() {
                                         <td className="px-6 py-4 text-sm text-gray-600">
                                             {new Date(user.last_login).toLocaleDateString()}
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <button className="p-2 hover:bg-gray-100 rounded-lg transition">
-                                                <MoreVertical className="w-5 h-5 text-gray-600" />
-                                            </button>
+                                        <td className="px-6 py-4 relative">
+                                            <div ref={menuRef}>
+                                                <button
+                                                    onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                                                    className="p-2 hover:bg-gray-100 rounded-lg transition"
+                                                >
+                                                    <MoreVertical className="w-5 h-5 text-gray-600" />
+                                                </button>
+                                                {openMenuId === user.id && (
+                                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                                                        <div className="py-1">
+                                                            <button
+                                                                onClick={async () => {
+                                                                    setOpenMenuId(null);
+                                                                    try {
+                                                                        setActionLoading('verify');
+                                                                        const response = await adminAPI.bulkUserAction([user.id], 'verify');
+                                                                        alert(response.message || 'User verified successfully');
+                                                                        loadUsers();
+                                                                    } catch (err: any) {
+                                                                        alert(`Failed to verify user: ${err.response?.data?.detail || err.message}`);
+                                                                    } finally {
+                                                                        setActionLoading(null);
+                                                                    }
+                                                                }}
+                                                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                                            >
+                                                                <UserCheck className="w-4 h-4" />
+                                                                Verify User
+                                                            </button>
+                                                            {user.is_active ? (
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        setOpenMenuId(null);
+                                                                        if (confirm('Are you sure you want to ban this user?')) {
+                                                                            try {
+                                                                                setActionLoading('deactivate');
+                                                                                const response = await adminAPI.bulkUserAction([user.id], 'deactivate');
+                                                                                alert(response.message || 'User banned successfully');
+                                                                                loadUsers();
+                                                                            } catch (err: any) {
+                                                                                alert(`Failed to ban user: ${err.response?.data?.detail || err.message}`);
+                                                                            } finally {
+                                                                                setActionLoading(null);
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                    className="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center gap-2"
+                                                                >
+                                                                    <Ban className="w-4 h-4" />
+                                                                    Ban User
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        setOpenMenuId(null);
+                                                                        try {
+                                                                            setActionLoading('activate');
+                                                                            const response = await adminAPI.bulkUserAction([user.id], 'activate');
+                                                                            alert(response.message || 'User unbanned successfully');
+                                                                            loadUsers();
+                                                                        } catch (err: any) {
+                                                                            alert(`Failed to unban user: ${err.response?.data?.detail || err.message}`);
+                                                                        } finally {
+                                                                            setActionLoading(null);
+                                                                        }
+                                                                    }}
+                                                                    className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
+                                                                >
+                                                                    <Unlock className="w-4 h-4" />
+                                                                    Unban User
+                                                                </button>
+                                                            )}
+                                                            {user.is_admin ? (
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        setOpenMenuId(null);
+                                                                        if (confirm('Are you sure you want to remove admin privileges from this user?')) {
+                                                                            try {
+                                                                                setActionLoading('demote_admin');
+                                                                                const response = await adminAPI.bulkUserAction([user.id], 'demote_admin');
+                                                                                alert(response.message || 'Admin privileges removed successfully');
+                                                                                loadUsers();
+                                                                            } catch (err: any) {
+                                                                                alert(`Failed to demote user: ${err.response?.data?.detail || err.message}`);
+                                                                            } finally {
+                                                                                setActionLoading(null);
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                    className="w-full text-left px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 flex items-center gap-2"
+                                                                >
+                                                                    <ShieldOff className="w-4 h-4" />
+                                                                    Remove Admin
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        setOpenMenuId(null);
+                                                                        if (confirm('Are you sure you want to promote this user to admin?')) {
+                                                                            try {
+                                                                                setActionLoading('promote_admin');
+                                                                                const response = await adminAPI.bulkUserAction([user.id], 'promote_admin');
+                                                                                alert(response.message || 'User promoted to admin successfully');
+                                                                                loadUsers();
+                                                                            } catch (err: any) {
+                                                                                alert(`Failed to promote user: ${err.response?.data?.detail || err.message}`);
+                                                                            } finally {
+                                                                                setActionLoading(null);
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                    className="w-full text-left px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 flex items-center gap-2"
+                                                                >
+                                                                    <Shield className="w-4 h-4" />
+                                                                    Promote to Admin
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                onClick={async () => {
+                                                                    setOpenMenuId(null);
+                                                                    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+                                                                        try {
+                                                                            setActionLoading('delete');
+                                                                            const response = await adminAPI.bulkUserAction([user.id], 'delete');
+                                                                            alert(response.message || 'User deleted successfully');
+                                                                            loadUsers();
+                                                                        } catch (err: any) {
+                                                                            alert(`Failed to delete user: ${err.response?.data?.detail || err.message}`);
+                                                                        } finally {
+                                                                            setActionLoading(null);
+                                                                        }
+                                                                    }
+                                                                }}
+                                                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -386,6 +887,131 @@ function AdminUsers() {
                                     Next
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* User Detail Modal */}
+            {showUserModal && selectedUser && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-gray-900">User Details</h2>
+                            <button
+                                onClick={() => {
+                                    setShowUserModal(false);
+                                    setSelectedUser(null);
+                                }}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition"
+                            >
+                                <X className="w-5 h-5 text-gray-600" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-6">
+                            {/* User Info */}
+                            <div className="flex items-center gap-4 pb-4 border-b border-gray-200">
+                                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-xl">
+                                    {selectedUser.user?.display_name?.[0] || selectedUser.user?.username?.[0] || 'U'}
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-semibold text-gray-900">
+                                        {selectedUser.user?.display_name || selectedUser.user?.username}
+                                    </h3>
+                                    <p className="text-gray-600">@{selectedUser.user?.username}</p>
+                                    <p className="text-sm text-gray-500">{selectedUser.user?.email}</p>
+                                </div>
+                            </div>
+
+                            {/* Status Badges */}
+                            <div className="flex flex-wrap gap-2">
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${selectedUser.user?.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                    {selectedUser.user?.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                                {selectedUser.user?.is_verified && (
+                                    <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                        Verified
+                                    </span>
+                                )}
+                                {selectedUser.user?.is_admin && (
+                                    <span className="px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                                        Admin
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Stats */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <div className="text-sm text-gray-600">Notifications</div>
+                                    <div className="text-2xl font-bold text-gray-900">{selectedUser.stats?.total_notifications || 0}</div>
+                                </div>
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <div className="text-sm text-gray-600">Matched Jobs</div>
+                                    <div className="text-2xl font-bold text-gray-900">{selectedUser.stats?.total_jobs_matched || 0}</div>
+                                </div>
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <div className="text-sm text-gray-600">Days Active</div>
+                                    <div className="text-2xl font-bold text-gray-900">{selectedUser.stats?.days_active || 0}</div>
+                                </div>
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <div className="text-sm text-gray-600">Joined</div>
+                                    <div className="text-lg font-semibold text-gray-900">
+                                        {new Date(selectedUser.user?.created_at).toLocaleDateString()}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Preferences */}
+                            {selectedUser.user?.preferences && selectedUser.user.preferences.length > 0 && (
+                                <div>
+                                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Job Preferences</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {selectedUser.user.preferences.map((pref: string, idx: number) => (
+                                            <span key={idx} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                                                {pref.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Alert Settings */}
+                            <div>
+                                <h4 className="text-lg font-semibold text-gray-900 mb-3">Alert Settings</h4>
+                                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Alert Speed:</span>
+                                        <span className="font-medium">{selectedUser.user?.alert_speed || 'Not set'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">In-App Notifications:</span>
+                                        <span className="font-medium">{selectedUser.user?.in_app_notifications ? 'Enabled' : 'Disabled'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Recent Activity */}
+                            {selectedUser.recent_activity && selectedUser.recent_activity.length > 0 && (
+                                <div>
+                                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Recent Activity</h4>
+                                    <div className="space-y-2">
+                                        {selectedUser.recent_activity.slice(0, 5).map((activity: any, idx: number) => (
+                                            <div key={idx} className="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
+                                                <div>
+                                                    <div className="font-medium text-gray-900">{activity.type}</div>
+                                                    <div className="text-sm text-gray-500">
+                                                        {new Date(activity.created_at).toLocaleString()}
+                                                    </div>
+                                                </div>
+                                                <span className={`px-2 py-1 rounded text-xs ${activity.status === 'read' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-800'}`}>
+                                                    {activity.status}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

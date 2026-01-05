@@ -119,6 +119,31 @@ def calculate_response_rate(
 # USER ANALYTICS (For individual users)
 # ============================================================================
 
+@router.get("/user/stats")
+def get_user_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get quick statistics for the logged-in user
+    """
+    # This is a simplified version of dashboard for quick stats
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    alerts_today = db.query(func.count(Notification.id)).filter(
+        Notification.user_id == current_user.id,
+        Notification.sent_at >= today_start
+    ).scalar() or 0
+    
+    saved_count = len(current_user.saved_jobs) if hasattr(current_user, 'saved_jobs') else 0
+    
+    return {
+        "appliedCount": 0,  # Placeholder until applications are tracked
+        "alertsToday": alerts_today,
+        "savedCount": saved_count
+    }
+
+
 @router.get("/user/dashboard")
 def get_user_dashboard(
     time_range: TimeRange = Query(TimeRange.WEEK),
@@ -143,7 +168,7 @@ def get_user_dashboard(
     # 2. Notifications sent to user
     total_notifications = db.query(func.count(Notification.id)).filter(
         Notification.user_id == current_user.id,
-        Notification.created_at >= start_date
+        Notification.sent_at >= start_date
     ).scalar() or 0
     
     # 3. Jobs by category breakdown
@@ -277,7 +302,7 @@ def get_admin_overview(
     
     # 6. Notifications today
     notifications_today = db.query(func.count(Notification.id)).filter(
-        Notification.created_at >= today_start
+        Notification.sent_at >= today_start
     ).scalar() or 0
     
     # 7. Duplicate detection rate

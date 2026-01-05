@@ -2,8 +2,13 @@ export interface User {
   id: number;
   email: string;
   username: string;
+  display_name?: string;
+  profile_image?: string;
   preferences: string[];
   telegram_chat_id?: string;
+  twitter_id?: string;
+  is_admin?: boolean;
+  last_login?: string;
   created_at: string;
 }
 
