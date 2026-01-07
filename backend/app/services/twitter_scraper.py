@@ -68,8 +68,15 @@ class TwitterScraper:
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         
         try:
-            service = Service(ChromeDriverManager().install())
-            self.driver = webdriver.Chrome(service=service, options=options)
+            try:
+                service = Service(ChromeDriverManager().install())
+                self.driver = webdriver.Chrome(service=service, options=options)
+            except Exception as e:
+                print(f"⚠️ Failed to install autodetected Chrome driver: {e}")
+                print("   Attempting to initialize using system default/PATH...")
+                # Fallback: Try to launch without specifying path (hopes it is in PATH)
+                self.driver = webdriver.Chrome(options=options)
+
             
             # Set page load timeout
             self.driver.set_page_load_timeout(30)

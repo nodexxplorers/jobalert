@@ -20,11 +20,47 @@ interface OnboardingData {
 }
 
 const jobCategories = [
-  { id: 'video-editing', label: 'Video Editing', icon: '🎬' },
-  { id: 'web-dev', label: 'Web Development', icon: '💻' },
-  { id: 'content-writing', label: 'Content Writing', icon: '✍️' },
-  { id: 'design', label: 'Graphic Design', icon: '🎨' },
+  // Tech & Dev
+  { id: 'software-dev', label: 'Software Developer', icon: '💻' },
+  { id: 'data-science', label: 'Data Scientist', icon: '📊' },
+  { id: 'web-dev', label: 'Web Developer', icon: '🌐' },
+  { id: 'blockchain', label: 'Blockchain Developer', icon: '⛓️' },
+  { id: 'smart-contract', label: 'Smart Contract Engineer', icon: '📜' },
+  { id: 'nft-manager', label: 'NFT Project Manager', icon: '🖼️' },
+  { id: 'crypto-analyst', label: 'Crypto Analyst', icon: '📈' },
+
+  // Design & Creative
+  { id: 'design', label: 'Graphic Designer', icon: '🎨' },
+  { id: 'ux-ui', label: 'UX/UI Designer', icon: '📐' },
+  { id: 'video-editing', label: 'Video Editor', icon: '🎬' },
   { id: 'motion-graphics', label: 'Motion Graphics', icon: '🎞️' },
+  { id: 'photographer', label: 'Freelance Photographer', icon: '📸' },
+  { id: 'music-producer', label: 'Music Producer', icon: '🎵' },
+  { id: 'artist', label: 'Artist Collaborations', icon: '🖌️' },
+  { id: 'film-crew', label: 'Film Production Crew', icon: '🎥' },
+
+  // Marketing & Content
+  { id: 'marketing', label: 'Marketing Consultant', icon: '📢' },
+  { id: 'social-media', label: 'Social Media Manager', icon: '📱' },
+  { id: 'content-writer', label: 'Content Writer', icon: '✍️' },
+  { id: 'copywriter', label: 'Copywriter', icon: '📝' },
+  { id: 'community-manager', label: 'Community Manager', icon: '🤝' },
+  { id: 'dev-advocate', label: 'Developer Advocate', icon: '🥑' },
+  { id: 'brand-ambassador', label: 'Brand Ambassador', icon: '🌟' },
+  { id: 'growth-hacker', label: 'Growth Hacker', icon: '🚀' },
+  { id: 'seo-specialist', label: 'SEO Specialist', icon: '🔍' },
+  { id: 'newsletter-writer', label: 'Newsletter Writer', icon: '📧' },
+  { id: 'podcast-producer', label: 'Podcast Producer', icon: '🎙️' },
+
+  // Business & Operations
+  { id: 'product-manager', label: 'Product Manager', icon: '📦' },
+  { id: 'project-manager', label: 'Project Manager', icon: '📅' },
+  { id: 'startup-founder', label: 'Startup Founder Roles', icon: '💡' },
+  { id: 'early-stage', label: 'Early-stage Employee', icon: '🌱' },
+  { id: 'sales-rep', label: 'Sales Representative', icon: '💰' },
+  { id: 'customer-success', label: 'Customer Success', icon: '🤝' },
+  { id: 'virtual-assistant', label: 'Virtual Assistant', icon: '🤖' },
+  { id: 'intern', label: 'Intern Positions', icon: '🎓' },
 ];
 
 export default function JobAlertsApp() {

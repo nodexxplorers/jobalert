@@ -22,50 +22,150 @@ class JobScrapingService:
     """
     
     # Search queries by category - improved with better search terms
+    # Search queries by category - Expanded to 32 roles
     SEARCH_QUERIES = {
-        'video-editing': [
-            'hiring video editor',
-            'video editor needed',
-            'video editing job remote',
-            'looking for video editor',
-            'premiere pro editor needed',
-            'video editor freelance',
-            'video editor position',
+        # --- Tech & Development ---
+        'software-dev': [
+            'hiring software developer', 'software engineer needed', 'backend developer job', 
+            'frontend developer hiring', 'full stack developer needed', 'remote developer job'
+        ],
+        'data-science': [
+            'hiring data scientist', 'data analyst needed', 'machine learning engineer job',
+            'hiring data engineer', 'AI engineer needed'
         ],
         'web-dev': [
-            'hiring web developer',
-            'web developer needed',
-            'react developer job',
-            'frontend developer remote',
-            'fullstack developer needed',
-            'web developer freelance',
-            'javascript developer job',
+            'hiring web developer', 'web designer needed', 'wordpress developer job',
+            'shopify developer needed', 'react developer hiring'
         ],
-        'content-writing': [
-            'hiring content writer',
-            'content writer needed',
-            'hiring copywriter',
-            'content writing job',
-            'looking for writer',
-            'blog writer needed',
-            'content writer freelance',
+        'blockchain': [
+            'hiring blockchain developer', 'solidity developer needed', 'rust developer job',
+            'web3 developer hiring', 'smart contract engineer needed'
         ],
+        'smart-contract': [
+            'smart contract developer', 'smart contract auditor needed', 'solidity engineer job'
+        ],
+        'nft-manager': [
+            'hiring nft project manager', 'nft community manager needed', 'nft mod needed',
+            'web3 project manager'
+        ],
+        'crypto-analyst': [
+            'hiring crypto analyst', 'crypto researcher needed', 'tokenomics expert job',
+            'web3 analyst needed'
+        ],
+        
+        # --- Design & Creative ---
         'design': [
-            'hiring graphic designer',
-            'graphic designer needed',
-            'hiring designer',
-            'design job remote',
-            'logo designer needed',
-            'ui designer job',
-            'graphic designer freelance',
+            'hiring graphic designer', 'graphic designer needed', 'brand designer job',
+            'logo designer needed', 'illustrator needed'
+        ],
+        'ux-ui': [
+            'hiring ui ux designer', 'product designer needed', 'ux researcher job',
+            'ui designer needed', 'web designer hiring'
+        ],
+        'video-editing': [
+            'hiring video editor', 'video editor needed', 'premiere pro editor job',
+            'youtube editor needed', 'video producer hiring'
         ],
         'motion-graphics': [
-            'hiring motion graphics designer',
-            'motion graphics designer needed',
-            'after effects animator',
-            'motion designer needed',
-            'motion graphics job',
-        ]
+            'hiring motion designer', 'motion graphics artist needed', 'after effects animator',
+            '3d animator needed'
+        ],
+        'photographer': [
+            'hiring freelance photographer', 'photographer needed', 'event photographer job',
+            'product photographer needed'
+        ],
+        'music-producer': [
+            'hiring music producer', 'sound engineer needed', 'audio engineer job',
+            'beatmaker needed', 'music composer hiring'
+        ],
+        'artist': [
+            'hiring artist', 'illustrator needed', 'concept artist job',
+            'digital artist needed', 'nft artist hiring'
+        ],
+        'film-crew': [
+            'hiring film crew', 'videographer needed', 'camera operator job',
+            'production assistant needed', 'film editor hiring'
+        ],
+
+        # --- Marketing & Social ---
+        'marketing': [
+            'hiring marketing consultant', 'marketing manager needed', 'digital marketing job',
+            'growth marketer needed', 'marketing strategist hiring'
+        ],
+        'social-media': [
+            'hiring social media manager', 'smm needed', 'social media specialist job',
+            'content creator needed', 'instagram manager hiring'
+        ],
+        'content-writer': [
+            'hiring content writer', 'blog writer needed', 'article writer job',
+            'technical writer needed', 'ghostwriter hiring'
+        ],
+        'copywriter': [
+            'hiring copywriter', 'copywriting job', 'email copywriter needed',
+            'ad copywriter hiring', 'sales copywriter needed'
+        ],
+        'community-manager': [
+            'hiring community manager', 'discord mod needed', 'community lead job',
+            'social media moderator needed'
+        ],
+        'dev-advocate': [
+            'hiring developer advocate', 'devrel job', 'developer relations manager',
+            'technical evangelist needed'
+        ],
+        'brand-ambassador': [
+            'hiring brand ambassador', 'brand rep needed', 'influencer marketing job',
+            'brand advocate needed'
+        ],
+        'growth-hacker': [
+            'hiring growth hacker', 'growth manager needed', 'user acquisition job',
+            'growth marketing manager'
+        ],
+        'seo-specialist': [
+            'hiring seo specialist', 'seo expert needed', 'seo manager job',
+            'link builder needed'
+        ],
+        'newsletter-writer': [
+            'hiring newsletter writer', 'newsletter editor needed', 'substack writer job',
+            'email marketer needed'
+        ],
+        'podcast-producer': [
+            'hiring podcast producer', 'podcast editor needed', 'audio producer job',
+            'podcast manager needed'
+        ],
+
+        # --- Business & Operations ---
+        'product-manager': [
+            'hiring product manager', 'product owner needed', 'head of product job',
+            'technical product manager'
+        ],
+        'project-manager': [
+            'hiring project manager', 'project coordinator needed', 'program manager job',
+            'scrum master needed'
+        ],
+        'startup-founder': [
+            'hiring cofounder', 'startup co-founder needed', 'founding engineer job',
+            'partner needed startup'
+        ],
+        'early-stage': [
+            'hiring founding member', 'early employee startup', 'join our startup',
+            'startup jobs'
+        ],
+        'sales-rep': [
+            'hiring sales representative', 'sales rep needed', 'account executive job',
+            'business development manager', 'sales closer needed'
+        ],
+        'customer-success': [
+            'hiring customer success manager', 'csm needed', 'customer support job',
+            'client success manager'
+        ],
+        'virtual-assistant': [
+            'hiring virtual assistant', 'va needed', 'executive assistant remote',
+            'personal assistant needed'
+        ],
+        'intern': [
+            'hiring interns', 'internship remote', 'marketing intern',
+            'developer intern', 'design intern'
+        ],
     }
     
     def __init__(self, db: Session):
@@ -335,7 +435,7 @@ class JobScrapingService:
         users = [u for u in all_active_users if u.preferences and category in u.preferences]
         
         if not users:
-            return
+            return []
             
         print(f"  📨 Notifying {len(users)} users who are interested in {category}", flush=True)
         sys.stdout.flush()

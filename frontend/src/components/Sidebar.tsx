@@ -1,8 +1,10 @@
 // src/components/Sidebar.tsx 
 
+import { useNavigate } from 'react-router-dom';
+
 interface FiltersType {
   jobType: string[];
-  payment: string[];    
+  payment: string[];
   postedWithin: string;
   keywords: string;
 }
@@ -12,10 +14,37 @@ interface SidebarProps {
   onFiltersChange: (filters: FiltersType) => void;
 }
 
+// Helper Component for Quick Links
+interface QuickLinkItemProps {
+  icon: string;
+  title: string;
+  subtitle: string;
+  onClick: () => void;
+  iconColor?: string;
+}
+
+function QuickLinkItem({ icon, title, subtitle, onClick, iconColor = 'text-blue-600' }: QuickLinkItemProps) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-3 w-full text-left py-3 hover:bg-gray-50 rounded-lg px-3 transition-colors"
+    >
+      <span className={iconColor}>{icon}</span>
+      <div>
+        <div className="font-medium text-gray-900">{title}</div>
+        <div className="text-xs text-green-600">{subtitle}</div>
+      </div>
+    </button>
+  );
+}
+
 export default function Sidebar({ filters, onFiltersChange }: SidebarProps) {
+  const navigate = useNavigate();
+
   const handleFilterChange = (key: string, value: string | string[]) => {
     onFiltersChange({ ...filters, [key]: value });
   };
+  // ... rest of the file
 
   const toggleArrayFilter = (key: string, value: string) => {
     const current = filters[key as keyof typeof filters] as string[];
@@ -130,13 +159,23 @@ export default function Sidebar({ filters, onFiltersChange }: SidebarProps) {
       {/* Quick Links */}
       <div className="bg-white rounded-2xl shadow-lg p-6">
         <h3 className="font-bold text-gray-900 mb-4">Quick Links</h3>
-        <button className="flex items-center gap-3 w-full text-left py-3 hover:bg-gray-50 rounded-lg px-3 transition-colors">
-          <span className="text-blue-600">🔔</span>
-          <div>
-            <div className="font-medium text-gray-900">Manage Alerts</div>
-            <div className="text-xs text-green-600">You're getting notified instantly ✅</div>
-          </div>
-        </button>
+        <div className="space-y-1">
+          <QuickLinkItem
+            icon="🔔"
+            title="Manage Alerts"
+            subtitle="Configure your notifications"
+            onClick={() => navigate('/settings')}
+          />
+          <QuickLinkItem
+            icon="🔖"
+            title="Saved Jobs"
+            subtitle="View your bookmarked jobs"
+            // Pass state to force "saved" tab active if Dashboard handles it, 
+            // but effectively we just navigate to /dashboard for now and let the user click the tab,
+            // or better: navigate with search param ?tab=saved
+            onClick={() => navigate('/dashboard?tab=saved')}
+          />
+        </div>
       </div>
     </div>
   );

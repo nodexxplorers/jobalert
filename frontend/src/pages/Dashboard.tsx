@@ -29,11 +29,19 @@ export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  // Sync search param from URL to filters
+  // Sync search param from URL to filters and active tab
   useEffect(() => {
     const search = searchParams.get('search');
+    const tab = searchParams.get('tab');
+
     if (search !== null && search !== filters.keywords) {
       setFilters(prev => ({ ...prev, keywords: search }));
+    }
+
+    if (tab === 'saved') {
+      setActiveTab('saved');
+    } else if (tab === 'latest') {
+      setActiveTab('latest');
     }
   }, [searchParams]);
 
